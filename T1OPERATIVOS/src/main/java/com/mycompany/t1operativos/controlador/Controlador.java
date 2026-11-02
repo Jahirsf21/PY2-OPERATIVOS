@@ -25,7 +25,6 @@ public class Controlador {
     private Parser parser;
     private Timer ejecucionAutomatica;
     private boolean modoAutomatico;
-    private Proceso solicitudTecladoVisible;
 
     /**
      * Construye el controlador y registra los eventos.
@@ -40,7 +39,6 @@ public class Controlador {
         this.gestor = null;
         this.parser = new Parser();
         this.modoAutomatico = false;
-        this.solicitudTecladoVisible = null;
         this.ejecucionAutomatica = new Timer(1000, e -> {
             if (modoAutomatico) {
                 ejecutarPaso();
@@ -75,7 +73,6 @@ public class Controlador {
         });
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
-        vista.addPropertyChangeListener("Entrada de teclado", evento -> recibirEntradaTeclado());
     }
 
     /**
@@ -161,29 +158,6 @@ public class Controlador {
     }
 
     /**
-     * Entrega la entrada activa al gestor.
-     */
-    private void recibirEntradaTeclado() {
-        if (gestor == null || solicitudTecladoVisible == null) {
-            return;
-        }
-        if (gestor.getSolicitudTeclado() != solicitudTecladoVisible) {
-            vista.imprimirPantalla("Error de teclado: el aviso no corresponde al solicitante actual.");
-            actualizarSolicitudTeclado();
-            return;
-        }
-        try {
-            gestor.recibirEntradaTeclado(vista.getTextoEntradaTeclado());
-            vista.setEntradaTecladoHabilitada(false);
-            solicitudTecladoVisible = null;
-            actualizarVista();
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            vista.imprimirPantalla(ex.getMessage());
-            vista.seleccionarEntradaTeclado();
-        }
-    }
-
-    /**
      * Limpia el dominio y la presentación.
      */
     private void limpiar() {
@@ -192,7 +166,6 @@ public class Controlador {
         if (gestor != null) {
             gestor.limpiar();
         }
-        solicitudTecladoVisible = null;
         vista.limpiarConsola();
         vista.setTitle("Mini PC");
         actualizarVista();
@@ -209,7 +182,6 @@ public class Controlador {
         actualizarEstadisticas();
         actualizarBCP();
         actualizarSeleccionProximaInstruccion();
-        actualizarSolicitudTeclado();
         actualizarControles();
     }
 
@@ -391,27 +363,6 @@ public class Controlador {
             vista.limpiarSeleccionTablas();
         } else {
             vista.seleccionarProximaInstruccion(gestor.getCPU().getPc());
-        }
-    }
-
-    /**
-     * Abre el aviso del solicitante pendiente.
-     */
-    private void actualizarSolicitudTeclado() {
-        Proceso solicitud = null;
-        if (gestor != null) {
-            solicitud = gestor.getSolicitudTeclado();
-        }
-        if (solicitud == solicitudTecladoVisible) {
-            return;
-        }
-        if (solicitudTecladoVisible != null) {
-            vista.setEntradaTecladoHabilitada(false);
-        }
-        solicitudTecladoVisible = null;
-        if (solicitud != null) {
-            vista.mostrarSolicitudTeclado(solicitud.getBCP().getIdProceso());
-            solicitudTecladoVisible = solicitud;
         }
     }
 

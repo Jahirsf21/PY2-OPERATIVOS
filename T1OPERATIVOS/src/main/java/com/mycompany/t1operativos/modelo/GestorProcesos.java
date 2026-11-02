@@ -21,8 +21,6 @@ public class GestorProcesos {
     private Despachador despachador;
     private List<Proceso> procesosRegistrados;
     private Queue<Proceso> colaTrabajos;
-    private String[] instruccionPendiente;
-    private int segundosPendientes;
 
     /**
      * Construye los recursos de la simulación.
@@ -80,26 +78,13 @@ public class GestorProcesos {
             if (cpu.getPc() < bcp.getInicioMemoria() || cpu.getPc() > bcp.getFinMemoria()) {
                 throw new IllegalStateException("El PC está fuera de los límites del programa.");
             }
-            if (instruccionPendiente == null) {
-                String[] instruccion = memoria.leer(cpu.getPc());
-                if (instruccion == null) {
-                    throw new IllegalStateException("No existe una instrucción válida en la posición " + cpu.getPc() + ".");
-                }
-                cpu.cargarInstruccion(instruccion);
-                if ("INT".equals(instruccion[0]) && "09H".equals(instruccion[1])) {
-                    solicitarEntradaTeclado();
-                    return null;
-                }
-                segundosPendientes = obtenerPeso(instruccion);
-                instruccionPendiente = instruccion;
+            String[] instruccion = memoria.leer(cpu.getPc());
+            if (instruccion == null) {
+                throw new IllegalStateException("No existe una instrucción válida en la posición " + cpu.getPc() + ".");
             }
+            cpu.cargarInstruccion(instruccion);
             bcp.aumentarTiempoEmpleado();
-            segundosPendientes--;
-            String salida = null;
-            if (segundosPendientes == 0) {
-                salida = ejecutarInstruccion(instruccionPendiente);
-                instruccionPendiente = null;
-            }
+            String salida = ejecutarInstruccion(instruccion);
             bcp.guardarContexto(cpu);
             if ("TERMINADO".equals(bcp.getEstado()) || !tieneInstrucciones(bcp)) {
                 finalizarProceso(proceso);
@@ -112,41 +97,6 @@ public class GestorProcesos {
                 finalizarProceso(proceso);
             }
             throw ex;
-        }
-    }
-
-    /**
-     * Completa la solicitud de teclado más antigua.
-     *
-     * @param texto entero ingresado por el usuario.
-     */
-    public void recibirEntradaTeclado(String texto) {
-        Proceso proceso = getSolicitudTeclado();
-        if (proceso == null) {
-            throw new IllegalStateException("No hay una solicitud de teclado pendiente.");
-        }
-        if (texto == null) {
-            throw new IllegalArgumentException("Entrada inválida: se requiere un entero de 0 a 255.");
-        }
-        int valor;
-        try {
-            valor = Integer.parseInt(texto.trim());
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Entrada inválida: se requiere un entero de 0 a 255.");
-        }
-        if (valor < 0 || valor > 255) {
-            throw new IllegalArgumentException("Entrada fuera de rango: el valor debe estar entre 0 y 255.");
-        }
-        BCP bcp = proceso.getBCP();
-        long instante = System.nanoTime();
-        bcp.completarEntradaTeclado(valor);
-        bcp.aumentarTiempoEmpleado(proceso.finalizarEsperaTeclado(instante));
-        if (tieneInstrucciones(bcp)) {
-            bcp.setEstadoListo();
-            planificador.agregarListo(proceso);
-            escribirBCPEnMemoria(proceso);
-        } else {
-            finalizarProceso(proceso);
         }
     }
 
@@ -200,32 +150,6 @@ public class GestorProcesos {
      */
     public List<Proceso> getProcesosRegistrados() {
         return procesosRegistrados;
-    }
-
-    /**
-     * Obtiene la solicitud de teclado más antigua.
-     *
-     * @return solicitante, o null.
-     */
-    public Proceso getSolicitudTeclado() {
-        Proceso solicitud = null;
-        for (Proceso proceso : procesosRegistrados) {
-            if ("EN_ESPERA".equals(proceso.getBCP().getEstado())) {
-                if (solicitud == null || proceso.getInicioEsperaTeclado() < solicitud.getInicioEsperaTeclado()) {
-                    solicitud = proceso;
-                }
-            }
-        }
-        return solicitud;
-    }
-
-    /**
-     * Obtiene la instrucción pendiente.
-     *
-     * @return instrucción, o null.
-     */
-    public String[] getInstruccionPendiente() {
-        return instruccionPendiente;
     }
 
     /**
@@ -409,51 +333,9 @@ public class GestorProcesos {
     }
 
     /**
-     * Obtiene el peso de una instrucción.
+     * Ejecuta una instrucción completa en un segundo.
      *
-     * @param instruccion instrucción preparada.
-     * @return peso fijo en segundos.
-     */
-    private int obtenerPeso(String[] instruccion) {
-        switch (instruccion[0]) {
-            case "MOV":
-            case "INC":
-            case "DEC":
-            case "SWAP":
-            case "PUSH":
-            case "POP":
-                return 1;
-            case "LOAD":
-            case "STORE":
-            case "CMP":
-            case "JMP":
-            case "JE":
-            case "JNE":
-                return 2;
-            case "ADD":
-            case "SUB":
-            case "PARAM":
-                return 3;
-            case "INT":
-                if ("10H".equals(instruccion[1]) || "20H".equals(instruccion[1])) {
-                    return 2;
-                }
-                if ("21H".equals(instruccion[1])) {
-                    return 5;
-                }
-                if ("09H".equals(instruccion[1])) {
-                    throw new IllegalStateException("INT 09H no tiene un peso fijo; depende de la entrada del usuario.");
-                }
-                throw new IllegalArgumentException("Interrupción desconocida: " + instruccion[1] + ".");
-            default:
-                throw new IllegalArgumentException("No se conoce el peso de " + instruccion[0] + ".");
-        }
-    }
-
-    /**
-     * Ejecuta una instrucción completa.
-     *
-     * @param instruccion instrucción cuyo peso terminó.
+     * @param instruccion instrucción cargada en IR.
      * @return salida de pantalla, o null.
      */
     private String ejecutarInstruccion(String[] instruccion) {
@@ -572,20 +454,6 @@ public class GestorProcesos {
     }
 
     /**
-     * Inicia una espera de teclado.
-     */
-    private void solicitarEntradaTeclado() {
-        Proceso proceso = getActual();
-        BCP bcp = proceso.getBCP();
-        bcp.setEstadoBloqueado();
-        proceso.iniciarEsperaTeclado(System.nanoTime());
-        despachador.retirarActual();
-        instruccionPendiente = null;
-        segundosPendientes = 0;
-        escribirBCPEnMemoria(proceso);
-    }
-
-    /**
      * Finaliza y libera un proceso.
      *
      * @param proceso proceso que termina.
@@ -602,8 +470,6 @@ public class GestorProcesos {
         gestorArchivos.cerrarArchivos(bcp);
         if (esActual) {
             despachador.retirarActual();
-            instruccionPendiente = null;
-            segundosPendientes = 0;
         }
         memoria.liberarUsuario(bcp.getInicioMemoria(), bcp.getAlcance());
         memoria.liberarKernel(posicion, cantidadCampos);
@@ -642,7 +508,5 @@ public class GestorProcesos {
         procesosRegistrados = new ArrayList<>();
         gestorArchivos = new GestorArchivos(disco, procesosRegistrados);
         colaTrabajos = new ArrayDeque<>();
-        instruccionPendiente = null;
-        segundosPendientes = 0;
     }
 }

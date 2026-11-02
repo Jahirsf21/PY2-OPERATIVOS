@@ -5,16 +5,10 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultFormatterFactory;
-import javax.swing.text.DocumentFilter;
 import javax.swing.text.NumberFormatter;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -58,8 +52,6 @@ public class Aplicacion extends JFrame {
     /** Tamaño elegido de memoria virtual. */
     private JSpinner selectorMemoriaVirtual;
     private JTextArea pantalla;
-    private int inicioEntradaConsola = -1;
-    private boolean actualizandoConsola;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
     /** Filas de trabajos pendientes. */
@@ -454,61 +446,8 @@ public class Aplicacion extends JFrame {
         pantalla = new JTextArea(6, 40);
         pantalla.setEditable(false);
         pantalla.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        configurarEntradaConsola();
         panel.add(new JScrollPane(pantalla), BorderLayout.CENTER);
         return panel;
-    }
-
-    /**
-     * Protege el historial de la consola y configura Enter para confirmar la entrada.
-     */
-    private void configurarEntradaConsola() {
-        ((AbstractDocument) pantalla.getDocument()).setDocumentFilter(new DocumentFilter() {
-            @Override
-            public void insertString(FilterBypass filtro, int posicion, String texto, AttributeSet atributos) throws BadLocationException {
-                replace(filtro, posicion, 0, texto, atributos);
-            }
-            @Override
-            public void remove(FilterBypass filtro, int posicion, int longitud) throws BadLocationException {
-                replace(filtro, posicion, longitud, null, null);
-            }
-            @Override
-            public void replace(FilterBypass filtro, int posicion, int longitud, String texto, AttributeSet atributos) throws BadLocationException {
-                if (actualizandoConsola) {
-                    filtro.replace(posicion, longitud, texto, atributos);
-                    return;
-                }
-                if (inicioEntradaConsola < 0 || posicion < inicioEntradaConsola) {
-                    return;
-                }
-                if (texto != null) {
-                    if (texto.contains("\n") || texto.contains("\r")) {
-                        return;
-                    }
-                }
-                filtro.replace(posicion, longitud, texto, atributos);
-            }
-        });
-
-        pantalla.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "confirmarEntradaConsola");
-        pantalla.getActionMap().put("confirmarEntradaConsola", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                if (inicioEntradaConsola >= 0) {
-                    Aplicacion.this.firePropertyChange("Entrada de teclado", null, getTextoEntradaTeclado());
-                }
-            }
-        });
-        pantalla.getActionMap().put("select-all", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                if (inicioEntradaConsola >= 0) {
-                    seleccionarEntradaTeclado();
-                } else {
-                    pantalla.selectAll();
-                }
-            }
-        });
     }
 
     /**
@@ -521,118 +460,20 @@ public class Aplicacion extends JFrame {
     }
 
     /**
-     * Obtiene el texto de la entrada activa.
-     *
-     * @return el texto ingresado, o una cadena vacía si no hay una entrada activa.
-     */
-    public String getTextoEntradaTeclado() {
-        if (inicioEntradaConsola < 0) {
-            return "";
-        }
-        return pantalla.getText().substring(inicioEntradaConsola);
-    }
-
-    /**
-     * Selecciona el texto de la entrada activa.
-     */
-    public void seleccionarEntradaTeclado() {
-        if (inicioEntradaConsola >= 0) {
-            pantalla.select(inicioEntradaConsola, pantalla.getDocument().getLength());
-        }
-    }
-
-    /**
      * Agrega una línea a la consola.
      *
      * @param texto texto que se desea mostrar.
      */
     public void imprimirPantalla(String texto) {
-        actualizandoConsola = true;
-        try {
-            if (inicioEntradaConsola >= 0) {
-                int inicioLinea = pantalla.getText().lastIndexOf('\n', inicioEntradaConsola - 1) + 1;
-                int posicion = pantalla.getCaret().getDot();
-                int marca = pantalla.getCaret().getMark();
-                String mensaje = texto + "\n";
-                pantalla.insert(mensaje, inicioLinea);
-                inicioEntradaConsola += mensaje.length();
-                if (marca >= inicioLinea) {
-                    marca += mensaje.length();
-                }
-                if (posicion >= inicioLinea) {
-                    posicion += mensaje.length();
-                }
-                pantalla.setCaretPosition(marca);
-                pantalla.moveCaretPosition(posicion);
-            } else {
-                pantalla.append(texto + "\n");
-                pantalla.setCaretPosition(pantalla.getDocument().getLength());
-            }
-        } finally {
-            actualizandoConsola = false;
-        }
+        pantalla.append(texto + "\n");
+        pantalla.setCaretPosition(pantalla.getDocument().getLength());
     }
 
     /**
-     * Muestra una solicitud de teclado.
-     *
-     * @param idProceso identificador del solicitante.
-     */
-    public void mostrarSolicitudTeclado(int idProceso) {
-        if (idProceso <= 0) {
-            throw new IllegalArgumentException("El identificador del solicitante debe ser positivo.");
-        }
-        if (inicioEntradaConsola >= 0) {
-            throw new IllegalStateException("Ya existe una entrada de teclado activa.");
-        }
-        actualizandoConsola = true;
-        try {
-            pantalla.append("Proceso " + idProceso + ": >> Ingresar valor: ");
-        } finally {
-            actualizandoConsola = false;
-        }
-        setEntradaTecladoHabilitada(true);
-    }
-
-    /**
-     * Habilita o deshabilita la entrada de teclado durante INT 09H.
-     *
-     * @param habilitada {@code true} para permitir la entrada.
-     */
-    public void setEntradaTecladoHabilitada(boolean habilitada) {
-        if (habilitada) {
-            if (inicioEntradaConsola < 0) {
-                inicioEntradaConsola = pantalla.getDocument().getLength();
-            }
-            pantalla.setEditable(true);
-            pantalla.setCaretPosition(pantalla.getDocument().getLength());
-            pantalla.requestFocusInWindow();
-        } else {
-            if (inicioEntradaConsola >= 0) {
-                actualizandoConsola = true;
-                try {
-                    pantalla.append("\n");
-                } finally {
-                    actualizandoConsola = false;
-                }
-            }
-            inicioEntradaConsola = -1;
-            pantalla.setEditable(false);
-        }
-    }
-
-    /**
-     * Limpia la consola y deshabilita la entrada.
+     * Limpia la consola.
      */
     public void limpiarConsola() {
-        inicioEntradaConsola = -1;
-        pantalla.setEditable(false);
-        actualizandoConsola = true;
-        try {
-            pantalla.setText("");
-        } finally {
-            actualizandoConsola = false;
-        }
+        pantalla.setText("");
     }
 
     /**

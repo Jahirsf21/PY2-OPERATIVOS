@@ -118,22 +118,6 @@ public class BCP {
     }
 
     /**
-     * Completa la entrada de teclado.
-     *
-     * @param valor entero de 0 a 255.
-     */
-    public void completarEntradaTeclado(int valor) {
-        if (valor < 0 || valor > 255) {
-            throw new IllegalArgumentException("El valor debe estar entre 0 y 255.");
-        }
-        if (!"EN_ESPERA".equals(estado)) {
-            throw new IllegalStateException("El proceso no está esperando una entrada de teclado.");
-        }
-        dx = Integer.toString(valor);
-        pc++;
-    }
-
-    /**
      * Guarda el contexto actual de la CPU.
      *
      * @param cpu CPU cuyo contexto se desea guardar.
@@ -415,13 +399,6 @@ public class BCP {
         if (tiempoInicio == null) {
             tiempoInicio = instante;
         }
-    }
-
-    /**
-     * Establece el estado del proceso como EN_ESPERA.
-     */
-    public void setEstadoBloqueado() {
-        this.estado = "EN_ESPERA";
     }
 
     /**

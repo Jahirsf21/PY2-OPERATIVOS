@@ -51,8 +51,8 @@ public class Despachador {
             throw new IllegalStateException("No hay un proceso actual para retirar.");
         }
         BCP bcp = actual.getBCP();
-        if (!"EN_ESPERA".equals(bcp.getEstado()) && !"TERMINADO".equals(bcp.getEstado())) {
-            throw new IllegalStateException("El proceso debe estar bloqueado o terminado para retirar.");
+        if (!"TERMINADO".equals(bcp.getEstado())) {
+            throw new IllegalStateException("El proceso debe estar terminado para retirar.");
         }
         Proceso retirado = actual;
         retirado.getBCP().guardarContexto(cpu);

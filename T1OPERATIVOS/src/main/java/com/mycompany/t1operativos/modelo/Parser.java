@@ -239,7 +239,7 @@ public class Parser {
             return "Formato inválido: se esperaba \"INT CÓDIGO\".";
         }
         if (!validarInterrupcion(partes[1])) {
-            return "Interrupción inválida: \"" + partes[1] + "\". Válidas: 09H, 10H, 20H, 21H.";
+            return "Interrupción inválida: \"" + partes[1] + "\". Válidas: 10H, 20H, 21H.";
         }
         return null;
     }
@@ -320,11 +320,10 @@ public class Parser {
      * Comprueba si un código de interrupción es reconocido.
      *
      * @param interrupcion código de interrupción que se desea comprobar.
-     * @return {@code true} si el código es 09H, 10H, 20H o 21H.
+     * @return {@code true} si el código es 10H, 20H o 21H.
      */
     public boolean validarInterrupcion(String interrupcion) {
         switch (interrupcion) {
-            case "09H":
             case "10H":
             case "20H":
             case "21H":
