@@ -21,6 +21,9 @@ public class GestorProcesos {
     private Despachador despachador;
     private List<Proceso> procesosRegistrados;
     private Queue<Proceso> colaTrabajos;
+    private int reloj;
+    private int segundosOcio;
+    private boolean corridaIniciada;
 
     /**
      * Construye los recursos de la simulación.
@@ -55,12 +58,12 @@ public class GestorProcesos {
                 mensajes.add(nombre + ": " + ex.getMessage());
             }
         }
-        cargarPendientesEnMemoria();
         return mensajes;
     }
 
     /**
-     * Avanza un paso del proceso seleccionado.
+     * Simula el segundo [reloj, reloj + 1): admite llegadas, despacha y
+     * ejecuta una instrucción, o registra ocio si no hay procesos listos.
      *
      * @return salida de INT 10H, o null si no hubo salida.
      */
@@ -68,8 +71,15 @@ public class GestorProcesos {
         if (!puedeEjecutar()) {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
+        corridaIniciada = true;
+        admitirLlegadas();
+        if (getActual() == null && planificador.hayProcesosListos()) {
+            despachador.despachar(planificador.obtenerSiguiente(), reloj);
+        }
         if (getActual() == null) {
-            despachador.despachar(planificador.obtenerSiguiente());
+            segundosOcio++;
+            reloj++;
+            return null;
         }
         Proceso proceso = getActual();
         BCP bcp = proceso.getBCP();
@@ -84,6 +94,7 @@ public class GestorProcesos {
             }
             cpu.cargarInstruccion(instruccion);
             bcp.aumentarTiempoEmpleado();
+            reloj++;
             String salida = ejecutarInstruccion(instruccion);
             bcp.guardarContexto(cpu);
             if ("TERMINADO".equals(bcp.getEstado()) || !tieneInstrucciones(bcp)) {
@@ -153,12 +164,58 @@ public class GestorProcesos {
     }
 
     /**
-     * Comprueba si existe un proceso ejecutable.
+     * Comprueba si se puede avanzar el reloj.
      *
-     * @return true si hay actual o listos.
+     * @return true si queda algún proceso sin terminar, aunque aún no haya llegado.
      */
     public boolean puedeEjecutar() {
-        return getActual() != null || planificador.hayProcesosListos();
+        return hayProcesosSinTerminar();
+    }
+
+    /**
+     * Obtiene el reloj simulado.
+     *
+     * @return segundos transcurridos desde cero.
+     */
+    public int getReloj() {
+        return reloj;
+    }
+
+    /**
+     * Obtiene el ocio de la CPU.
+     *
+     * @return segundos sin proceso en ejecución.
+     */
+    public int getSegundosOcio() {
+        return segundosOcio;
+    }
+
+    /**
+     * Comprueba si las llegadas aún se pueden editar.
+     *
+     * @return true antes del primer paso.
+     */
+    public boolean puedeEditarLlegadas() {
+        return !corridaIniciada;
+    }
+
+    /**
+     * Cambia la llegada de un proceso antes del primer paso.
+     *
+     * @param idProceso identificador del proceso.
+     * @param llegada segundo de llegada, no negativo.
+     */
+    public void cambiarLlegada(int idProceso, int llegada) {
+        if (corridaIniciada) {
+            throw new IllegalStateException("Las llegadas solo se editan antes del primer paso.");
+        }
+        for (Proceso proceso : procesosRegistrados) {
+            if (proceso.getBCP().getIdProceso() == idProceso) {
+                proceso.getBCP().setLlegada(llegada);
+                return;
+            }
+        }
+        throw new IllegalArgumentException("No existe el proceso " + idProceso + ".");
     }
 
     /**
@@ -214,9 +271,31 @@ public class GestorProcesos {
             id = procesosRegistrados.get(procesosRegistrados.size() - 1).getBCP().getIdProceso() + 1;
         }
         int posicionIndice = gestorArchivos.registrarPrograma(archivo.getName(), instrucciones);
-        Proceso proceso = new Proceso(new BCP(id, 1), posicionIndice);
+        Proceso proceso = new Proceso(new BCP(id, 1, instrucciones.size(), reloj), posicionIndice);
         procesosRegistrados.add(proceso);
-        colaTrabajos.add(proceso);
+    }
+
+    /**
+     * Pasa a la cola de trabajos los procesos cuya llegada ya ocurrió, por
+     * llegada y luego por orden de registro, y los carga en RAM si caben.
+     */
+    private void admitirLlegadas() {
+        while (true) {
+            Proceso siguiente = null;
+            for (Proceso proceso : procesosRegistrados) {
+                BCP bcp = proceso.getBCP();
+                if ("NUEVO".equals(bcp.getEstado()) && bcp.getLlegada() <= reloj && !colaTrabajos.contains(proceso)) {
+                    if (siguiente == null || bcp.getLlegada() < siguiente.getBCP().getLlegada()) {
+                        siguiente = proceso;
+                    }
+                }
+            }
+            if (siguiente == null) {
+                break;
+            }
+            colaTrabajos.add(siguiente);
+        }
+        cargarPendientesEnMemoria();
     }
 
     /**
@@ -281,8 +360,8 @@ public class GestorProcesos {
     private String[] getCamposBCP() {
         return new String[]{"idProceso", "estado", "prioridad", "pc", "inicioMemoria", "finMemoria",
             "ir", "ac", "ax", "bx", "cx", "dx", "ah", "al", "flag", "pila1", "pila2", "pila3", "pila4",
-            "pila5", "punteroPila", "cpuActual", "tiempoInicio", "tiempoFinal", "tiempoTotalSegundos",
-            "direccionSiguienteBCP", "archivosAbiertos"};
+            "pila5", "punteroPila", "cpuActual", "llegada", "rafaga", "tiempoInicio", "tiempoFinal",
+            "tiempoServicio", "direccionSiguienteBCP", "archivosAbiertos"};
     }
 
     /**
@@ -301,8 +380,9 @@ public class GestorProcesos {
             String.valueOf(bcp.esIgual()), String.valueOf(bcp.getValorPila(0)),
             String.valueOf(bcp.getValorPila(1)), String.valueOf(bcp.getValorPila(2)), String.valueOf(bcp.getValorPila(3)),
             String.valueOf(bcp.getValorPila(4)), String.valueOf(bcp.getPunteroPila()), String.valueOf(bcp.getCpuActual()),
+            String.valueOf(bcp.getLlegada()), String.valueOf(bcp.getRafaga()),
             String.valueOf(bcp.getTiempoInicio()), String.valueOf(bcp.getTiempoFinal()),
-            String.valueOf(bcp.getTiempoTotalSegundos()), String.valueOf(bcp.getDireccionSiguienteBCP()),
+            String.valueOf(bcp.getTiempoEmpleadoSegundos()), String.valueOf(bcp.getDireccionSiguienteBCP()),
             bcp.getArchivosAbiertos().toString()};
         for (int i = 0; i < nombres.length; i++) {
             memoria.escribirKernel(posicion + i, nombres[i], valores[i]);
@@ -378,7 +458,7 @@ public class GestorProcesos {
             case "INT":
                 switch (instruccion[1]) {
                     case "20H":
-                        bcp.setEstadoTerminado();
+                        bcp.setEstadoTerminado(reloj);
                         break;
                     case "10H":
                         salida = cpu.getDx();
@@ -466,7 +546,7 @@ public class GestorProcesos {
         if (posicion < 0) {
             throw new IllegalStateException("El proceso no tiene memoria asignada para liberar.");
         }
-        bcp.setEstadoTerminado();
+        bcp.setEstadoTerminado(reloj);
         gestorArchivos.cerrarArchivos(bcp);
         if (esActual) {
             despachador.retirarActual();
@@ -508,5 +588,8 @@ public class GestorProcesos {
         procesosRegistrados = new ArrayList<>();
         gestorArchivos = new GestorArchivos(disco, procesosRegistrados);
         colaTrabajos = new ArrayDeque<>();
+        reloj = 0;
+        segundosOcio = 0;
+        corridaIniciada = false;
     }
 }

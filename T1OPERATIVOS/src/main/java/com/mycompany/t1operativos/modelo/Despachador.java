@@ -26,8 +26,9 @@ public class Despachador {
      * Restaura y asigna CPU al proceso listo.
      *
      * @param proceso proceso seleccionado.
+     * @param instante segundo del reloj simulado.
      */
-    public void despachar(Proceso proceso) {
+    public void despachar(Proceso proceso, int instante) {
         if (proceso == null) {
             throw new IllegalArgumentException("El proceso no puede ser nulo.");
         }
@@ -37,7 +38,7 @@ public class Despachador {
         }
         bcp.restaurarContexto(cpu);
         bcp.setCpuActual(1);
-        bcp.setEstadoEjecutando();
+        bcp.setEstadoEjecutando(instante);
         actual = proceso;
     }
 

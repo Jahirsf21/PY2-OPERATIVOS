@@ -8,10 +8,11 @@ import com.mycompany.t1operativos.modelo.Parser;
 import com.mycompany.t1operativos.modelo.Proceso;
 import com.mycompany.t1operativos.vista.Aplicacion;
 import java.io.File;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -73,6 +74,11 @@ public class Controlador {
         });
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
+        vista.getModeloTrabajos().addTableModelListener(e -> {
+            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 1 && e.getFirstRow() >= 0) {
+                cambiarLlegada(e.getFirstRow());
+            }
+        });
     }
 
     /**
@@ -158,6 +164,28 @@ public class Controlador {
     }
 
     /**
+     * Entrega al gestor la llegada editada en la lista de trabajos.
+     *
+     * @param fila fila editada.
+     */
+    private void cambiarLlegada(int fila) {
+        if (gestor == null) {
+            return;
+        }
+        DefaultTableModel modelo = vista.getModeloTrabajos();
+        int idProceso = Integer.parseInt(String.valueOf(modelo.getValueAt(fila, 0)));
+        try {
+            int llegada = Integer.parseInt(String.valueOf(modelo.getValueAt(fila, 1)).trim());
+            gestor.cambiarLlegada(idProceso, llegada);
+        } catch (NumberFormatException ex) {
+            mostrarError("La llegada debe ser un entero no negativo.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            mostrarError(ex.getMessage());
+        }
+        SwingUtilities.invokeLater(() -> actualizarVista());
+    }
+
+    /**
      * Limpia el dominio y la presentación.
      */
     private void limpiar() {
@@ -175,6 +203,7 @@ public class Controlador {
      * Actualiza los datos de la vista.
      */
     private void actualizarVista() {
+        actualizarReloj();
         actualizarTablaMemoria();
         actualizarTablaDisco();
         actualizarTablaTrabajos();
@@ -255,7 +284,7 @@ public class Controlador {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 BCP bcp = proceso.getBCP();
                 if ("NUEVO".equals(bcp.getEstado())) {
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado()});
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getEstado()});
                 }
             }
         }
@@ -270,33 +299,62 @@ public class Controlador {
         if (gestor != null) {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 if (proceso.getPosicionBCP() >= 0) {
-                    modelo.addRow(new Object[]{proceso.getBCP().getIdProceso(), proceso.getBCP().getEstado()});
+                    BCP bcp = proceso.getBCP();
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante()});
                 }
             }
         }
     }
 
     /**
-     * Muestra los tiempos de todos los procesos registrados.
+     * Muestra el reloj simulado y el ocio de la CPU.
+     */
+    private void actualizarReloj() {
+        int reloj = 0;
+        int ocio = 0;
+        if (gestor != null) {
+            reloj = gestor.getReloj();
+            ocio = gestor.getSegundosOcio();
+        }
+        vista.mostrarReloj("Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
+    }
+
+    /**
+     * Muestra los tiempos simulados de todos los procesos registrados.
      */
     private void actualizarEstadisticas() {
         DefaultTableModel modelo = vista.getModeloEstadisticas();
         modelo.setRowCount(0);
         if (gestor != null) {
-            DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 BCP bcp = proceso.getBCP();
-                String inicio = "-";
-                String fin = "-";
-                if (bcp.getTiempoInicio() != null) {
-                    inicio = bcp.getTiempoInicio().format(formato);
+                String retorno = "-";
+                String razon = "-";
+                if (bcp.getTiempoFinal() >= 0) {
+                    int tr = bcp.getTiempoFinal() - bcp.getLlegada();
+                    retorno = String.valueOf(tr);
+                    if (bcp.getTiempoEmpleadoSegundos() > 0) {
+                        razon = String.format("%.2f", (double) tr / bcp.getTiempoEmpleadoSegundos());
+                    }
                 }
-                if (bcp.getTiempoFinal() != null) {
-                    fin = bcp.getTiempoFinal().format(formato);
-                }
-                modelo.addRow(new Object[]{bcp.getIdProceso(), inicio, fin, bcp.getTiempoTotalSegundos()});
+                modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(),
+                    formatearInstante(bcp.getTiempoInicio()), formatearInstante(bcp.getTiempoFinal()),
+                    bcp.getTiempoEmpleadoSegundos(), retorno, razon});
             }
         }
+    }
+
+    /**
+     * Presenta un instante simulado.
+     *
+     * @param instante segundo del reloj, o -1.
+     * @return el número, o "-" si no existe.
+     */
+    private String formatearInstante(int instante) {
+        if (instante < 0) {
+            return "-";
+        }
+        return String.valueOf(instante);
     }
 
     /**
@@ -312,14 +370,6 @@ public class Controlador {
             return;
         }
         BCP bcp = proceso.getBCP();
-        String inicio = "-";
-        String fin = "-";
-        if (bcp.getTiempoInicio() != null) {
-            inicio = bcp.getTiempoInicio().toString();
-        }
-        if (bcp.getTiempoFinal() != null) {
-            fin = bcp.getTiempoFinal().toString();
-        }
         String texto = "ID: " + bcp.getIdProceso()
                 + "\nEstado: " + bcp.getEstado()
                 + "\nPrioridad: " + bcp.getPrioridad()
@@ -343,9 +393,12 @@ public class Controlador {
                 + "\nPila 5: " + bcp.getValorPila(4)
                 + "\nPuntero pila: " + bcp.getPunteroPila()
                 + "\nCPU actual: " + bcp.getCpuActual()
-                + "\nInicio ejecución: " + inicio
-                + "\nFin ejecución: " + fin
-                + "\nDuración: " + bcp.getTiempoTotalSegundos() + " s"
+                + "\nLlegada: " + bcp.getLlegada()
+                + "\nRáfaga: " + bcp.getRafaga()
+                + "\nRestante: " + bcp.getRestante()
+                + "\nInicio ejecución: " + formatearInstante(bcp.getTiempoInicio())
+                + "\nFin ejecución: " + formatearInstante(bcp.getTiempoFinal())
+                + "\nServicio: " + bcp.getTiempoEmpleadoSegundos() + " s"
                 + "\nSiguiente BCP: " + bcp.getDireccionSiguienteBCP()
                 + "\nArchivos abiertos: " + bcp.getArchivosAbiertos();
         vista.mostrarBCP(texto);
@@ -387,6 +440,7 @@ public class Controlador {
         vista.getBtnCargarArchivo().setEnabled(true);
         vista.getBtnLimpiar().setEnabled(hayProcesosRegistrados && (!modoAutomatico || !ejecutable));
         vista.setConfiguracionHabilitada(!hayProcesosRegistrados);
+        vista.setLlegadasEditables(hayProcesosRegistrados && gestor.puedeEditarLlegadas());
     }
 
     /**

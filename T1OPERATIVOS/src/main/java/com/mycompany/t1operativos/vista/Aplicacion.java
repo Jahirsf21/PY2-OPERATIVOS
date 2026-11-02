@@ -40,6 +40,9 @@ public class Aplicacion extends JFrame {
     private JTable tablaDisco;
     /** Tabla de trabajos pendientes. */
     private JTable tablaTrabajos;
+    /** Permite editar la columna de llegada. */
+    private boolean llegadasEditables;
+    private JLabel lblReloj;
     /** Tabla de procesos cargados en RAM. */
     private JTable tablaProcesos;
     /** Tabla de tiempos por proceso. */
@@ -118,6 +121,8 @@ public class Aplicacion extends JFrame {
         btnEstadisticas = new JButton("Estadísticas");
         btnEstadisticas.addActionListener(e -> mostrarEstadisticas());
         panelBotonesAccion.add(btnEstadisticas);
+        lblReloj = new JLabel();
+        panelBotonesAccion.add(lblReloj);
 
         JPanel panelCargarArchivo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         btnCargarArchivo = new JButton("Cargar archivos");
@@ -313,10 +318,10 @@ public class Aplicacion extends JFrame {
     private JPanel crearPanelTrabajos() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Lista de Trabajos"));
-        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajos", "Estados"}, 0) {
+        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Estado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
-                return false;
+                return col == 1 && llegadasEditables;
             }
         };
         tablaTrabajos = new JTable(modeloTrabajos);
@@ -335,7 +340,7 @@ public class Aplicacion extends JFrame {
     private JPanel crearPanelProcesos() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Lista de Procesos"));
-        modeloProcesos = new DefaultTableModel(new Object[]{"Procesos", "Estados"}, 0) {
+        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -358,7 +363,7 @@ public class Aplicacion extends JFrame {
         tabla.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tabla.setFillsViewportHeight(true);
         tabla.getTableHeader().setResizingAllowed(false);
-        int ancho = 150;
+        int ancho = 300 / tabla.getColumnCount();
         for (int i = 0; i < tabla.getColumnCount(); i++) {
             TableColumn columna = tabla.getColumnModel().getColumn(i);
             columna.setPreferredWidth(ancho);
@@ -376,7 +381,7 @@ public class Aplicacion extends JFrame {
     private JPanel crearPanelEstadisticas() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        modeloEstadisticas = new DefaultTableModel(new Object[]{"Proceso", "Inicio", "Finalización", "Duración (s)"}, 0) {
+        modeloEstadisticas = new DefaultTableModel(new Object[]{"Proceso", "Llegada", "Ráfaga", "Inicio", "Final", "Servicio (s)", "Tr", "Tr/Ts"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -676,6 +681,27 @@ public class Aplicacion extends JFrame {
      */
     public DefaultTableModel getModeloTrabajos() {
         return modeloTrabajos;
+    }
+
+    /**
+     * Habilita la edición de llegadas en la lista de trabajos.
+     *
+     * @param editables true antes del primer paso.
+     */
+    public void setLlegadasEditables(boolean editables) {
+        llegadasEditables = editables;
+        if (!editables && tablaTrabajos.isEditing()) {
+            tablaTrabajos.getCellEditor().cancelCellEditing();
+        }
+    }
+
+    /**
+     * Muestra el reloj simulado.
+     *
+     * @param texto reloj y ocio de la CPU.
+     */
+    public void mostrarReloj(String texto) {
+        lblReloj.setText(texto);
     }
 
     /**

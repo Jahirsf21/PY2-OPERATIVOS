@@ -1,6 +1,5 @@
 package com.mycompany.t1operativos.modelo;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,9 +31,11 @@ public class BCP {
     private int pila5;
     private int punteroPila;
     private int cpuActual;
-    private LocalDateTime tiempoInicio;
-    private LocalDateTime tiempoFinal;
-    private long tiempoEmpleadoSegundos;
+    private int llegada;
+    private int rafaga;
+    private int tiempoInicio;
+    private int tiempoFinal;
+    private int tiempoEmpleadoSegundos;
     private int direccionSiguienteBCP;
     private List<String> archivosAbiertos;
 
@@ -43,11 +44,13 @@ public class BCP {
      *
      * @param idProceso identificador del proceso.
      * @param prioridad prioridad asignada al proceso.
+     * @param rafaga cantidad de líneas del programa.
+     * @param llegada segundo de llegada.
      * @param inicioMemoria primera posición de memoria asignada.
      * @param finMemoria última posición de memoria asignada.
      */
-    public BCP(int idProceso, int prioridad, int inicioMemoria, int finMemoria) {
-        this(idProceso, prioridad);
+    public BCP(int idProceso, int prioridad, int rafaga, int llegada, int inicioMemoria, int finMemoria) {
+        this(idProceso, prioridad, rafaga, llegada);
         asignarMemoria(inicioMemoria, finMemoria);
     }
 
@@ -56,10 +59,18 @@ public class BCP {
      *
      * @param idProceso identificador positivo del proceso.
      * @param prioridad prioridad asignada.
+     * @param rafaga cantidad positiva de líneas del programa.
+     * @param llegada segundo de llegada, no negativo.
      */
-    public BCP(int idProceso, int prioridad) {
+    public BCP(int idProceso, int prioridad, int rafaga, int llegada) {
         if (idProceso <= 0) {
             throw new IllegalArgumentException("El identificador del proceso debe ser positivo.");
+        }
+        if (rafaga <= 0) {
+            throw new IllegalArgumentException("La ráfaga debe ser positiva.");
+        }
+        if (llegada < 0) {
+            throw new IllegalArgumentException("La llegada no puede ser negativa.");
         }
         this.idProceso = idProceso;
         this.estado = "NUEVO";
@@ -83,8 +94,10 @@ public class BCP {
         this.pila5 = 0;
         this.punteroPila = -1;
         this.cpuActual = -1;
-        this.tiempoInicio = null;
-        this.tiempoFinal = null;
+        this.llegada = llegada;
+        this.rafaga = rafaga;
+        this.tiempoInicio = -1;
+        this.tiempoFinal = -1;
         this.tiempoEmpleadoSegundos = 0;
         this.direccionSiguienteBCP = -1;
         this.archivosAbiertos = new ArrayList<>();
@@ -279,57 +292,81 @@ public class BCP {
     }
 
     /**
-     * Incrementa el tiempo empleado en un segundo.
+     * Suma un segundo de servicio.
      */
     public void aumentarTiempoEmpleado() {
-        aumentarTiempoEmpleado(1);
+        tiempoEmpleadoSegundos++;
     }
 
     /**
-     * Acumula segundos en el tiempo empleado.
+     * Obtiene el servicio recibido.
      *
-     * @param segundos cantidad de segundos que se desea sumar.
+     * @return segundos ejecutados.
      */
-    public void aumentarTiempoEmpleado(long segundos) {
-        if (segundos < 0) {
-            throw new IllegalArgumentException("El tiempo empleado no puede ser negativo.");
+    public int getTiempoEmpleadoSegundos() {
+        return tiempoEmpleadoSegundos;
+    }
+
+    /**
+     * Obtiene la llegada.
+     *
+     * @return segundo de llegada.
+     */
+    public int getLlegada() {
+        return llegada;
+    }
+
+    /**
+     * Cambia la llegada de un proceso nuevo.
+     *
+     * @param llegada segundo de llegada, no negativo.
+     */
+    public void setLlegada(int llegada) {
+        if (llegada < 0) {
+            throw new IllegalArgumentException("La llegada no puede ser negativa.");
         }
-        tiempoEmpleadoSegundos += segundos;
+        if (!"NUEVO".equals(estado)) {
+            throw new IllegalStateException("Solo se cambia la llegada de un proceso nuevo.");
+        }
+        this.llegada = llegada;
     }
 
     /**
-     * Obtiene el tiempo empleado por el proceso.
+     * Obtiene la ráfaga estimada.
      *
-     * @return el tiempo empleado en segundos.
+     * @return cantidad de líneas del programa.
      */
-    public long getTiempoEmpleadoSegundos() {
-        return tiempoEmpleadoSegundos;
+    public int getRafaga() {
+        return rafaga;
     }
 
     /**
-     * Obtiene la duración total del proceso.
+     * Obtiene la ráfaga pendiente estimada.
      *
-     * @return la duración en segundos.
+     * @return ráfaga menos servicio, o 0.
      */
-    public long getTiempoTotalSegundos() {
-        return tiempoEmpleadoSegundos;
+    public int getRestante() {
+        if (tiempoEmpleadoSegundos >= rafaga) {
+            return 0;
+        }
+        return rafaga - tiempoEmpleadoSegundos;
     }
 
     /**
-     * Obtiene la fecha de inicio del proceso.
+     * Obtiene el primer inicio.
      *
-     * @return la fecha de inicio, o {@code null} si aún no inició.
+     * @return segundo de inicio, o -1 si no inició.
      */
-    public LocalDateTime getTiempoInicio() {
+    public int getTiempoInicio() {
         return tiempoInicio;
     }
 
     /**
-     * Obtiene la fecha de finalización del proceso.
+     * Obtiene la finalización.
      *
-     * @return la fecha de finalización, o {@code null} si aún no terminó.
+     * @return segundo final, o -1 si no terminó.
      */
-    public LocalDateTime getTiempoFinal() {
+    public int getTiempoFinal() {
         return tiempoFinal;
     }
 
@@ -380,23 +417,16 @@ public class BCP {
     }
 
     /**
-     * Establece el estado EJECUTANDO y registra el primer inicio.
-     */
-    public void setEstadoEjecutando() {
-        setEstadoEjecutando(LocalDateTime.now());
-    }
-
-    /**
-     * Establece el estado EJECUTANDO con la fecha de inicio indicada.
+     * Establece EJECUTANDO y registra el primer inicio.
      *
-     * @param instante fecha de inicio que se desea registrar por primera vez.
+     * @param instante segundo del reloj simulado.
      */
-    public void setEstadoEjecutando(LocalDateTime instante) {
-        if (instante == null) {
-            throw new IllegalArgumentException("La fecha de inicio no puede ser nula.");
+    public void setEstadoEjecutando(int instante) {
+        if (instante < 0) {
+            throw new IllegalArgumentException("El inicio no puede ser negativo.");
         }
         this.estado = "EJECUTANDO";
-        if (tiempoInicio == null) {
+        if (tiempoInicio == -1) {
             tiempoInicio = instante;
         }
     }
@@ -416,26 +446,16 @@ public class BCP {
     }
 
     /**
-     * Finaliza el proceso con la fecha calculada según su duración acumulada.
-     */
-    public void setEstadoTerminado() {
-        if (tiempoInicio == null) {
-            tiempoInicio = LocalDateTime.now();
-        }
-        setEstadoTerminado(tiempoInicio.plusSeconds(tiempoEmpleadoSegundos));
-    }
-
-    /**
-     * Establece el estado TERMINADO y registra la primera finalización.
+     * Establece TERMINADO y registra la primera finalización.
      *
-     * @param instante fecha de finalización que se desea registrar.
+     * @param instante segundo del reloj simulado.
      */
-    public void setEstadoTerminado(LocalDateTime instante) {
-        if (instante == null) {
-            throw new IllegalArgumentException("La fecha de finalización no puede ser nula.");
+    public void setEstadoTerminado(int instante) {
+        if (instante < 0) {
+            throw new IllegalArgumentException("El final no puede ser negativo.");
         }
         this.estado = "TERMINADO";
-        if (tiempoFinal == null) {
+        if (tiempoFinal == -1) {
             tiempoFinal = instante;
         }
     }
