@@ -46,6 +46,7 @@ public class Controlador {
             }
         });
         registrarEventos();
+        actualizarReloj();
     }
 
     /**
@@ -75,8 +76,8 @@ public class Controlador {
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
         vista.getModeloTrabajos().addTableModelListener(e -> {
-            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 1 && e.getFirstRow() >= 0) {
-                cambiarLlegada(e.getFirstRow());
+            if (e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 1 || e.getColumn() == 3)) {
+                cambiarDatoTrabajo(e.getFirstRow(), e.getColumn());
             }
         });
     }
@@ -90,7 +91,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || destino.getProcesosRegistrados().isEmpty()) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -164,21 +165,30 @@ public class Controlador {
     }
 
     /**
-     * Entrega al gestor la llegada editada en la lista de trabajos.
+     * Entrega al gestor la llegada o prioridad editada en la lista de trabajos.
      *
      * @param fila fila editada.
+     * @param columna 1 para llegada, 3 para prioridad.
      */
-    private void cambiarLlegada(int fila) {
+    private void cambiarDatoTrabajo(int fila, int columna) {
         if (gestor == null) {
             return;
         }
         DefaultTableModel modelo = vista.getModeloTrabajos();
         int idProceso = Integer.parseInt(String.valueOf(modelo.getValueAt(fila, 0)));
         try {
-            int llegada = Integer.parseInt(String.valueOf(modelo.getValueAt(fila, 1)).trim());
-            gestor.cambiarLlegada(idProceso, llegada);
+            int valor = Integer.parseInt(String.valueOf(modelo.getValueAt(fila, columna)).trim());
+            if (columna == 1) {
+                gestor.cambiarLlegada(idProceso, valor);
+            } else {
+                gestor.cambiarPrioridad(idProceso, valor);
+            }
         } catch (NumberFormatException ex) {
-            mostrarError("La llegada debe ser un entero no negativo.");
+            if (columna == 1) {
+                mostrarError("La llegada debe ser un entero no negativo.");
+            } else {
+                mostrarError("La prioridad debe ser un entero de 1 a 10.");
+            }
         } catch (IllegalArgumentException | IllegalStateException ex) {
             mostrarError(ex.getMessage());
         }
@@ -284,7 +294,7 @@ public class Controlador {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 BCP bcp = proceso.getBCP();
                 if ("NUEVO".equals(bcp.getEstado())) {
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getEstado()});
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getEstado()});
                 }
             }
         }
@@ -312,11 +322,13 @@ public class Controlador {
     private void actualizarReloj() {
         int reloj = 0;
         int ocio = 0;
+        String algoritmo = vista.getAlgoritmoSeleccionado();
         if (gestor != null) {
             reloj = gestor.getReloj();
             ocio = gestor.getSegundosOcio();
+            algoritmo = gestor.getAlgoritmo();
         }
-        vista.mostrarReloj("Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
+        vista.mostrarReloj("Algoritmo: " + algoritmo + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
     }
 
     /**
@@ -440,7 +452,7 @@ public class Controlador {
         vista.getBtnCargarArchivo().setEnabled(true);
         vista.getBtnLimpiar().setEnabled(hayProcesosRegistrados && (!modoAutomatico || !ejecutable));
         vista.setConfiguracionHabilitada(!hayProcesosRegistrados);
-        vista.setLlegadasEditables(hayProcesosRegistrados && gestor.puedeEditarLlegadas());
+        vista.setTrabajosEditables(hayProcesosRegistrados && gestor.puedeEditarTrabajos());
     }
 
     /**

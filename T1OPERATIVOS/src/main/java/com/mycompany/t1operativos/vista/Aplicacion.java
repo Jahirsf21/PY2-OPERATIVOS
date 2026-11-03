@@ -40,8 +40,8 @@ public class Aplicacion extends JFrame {
     private JTable tablaDisco;
     /** Tabla de trabajos pendientes. */
     private JTable tablaTrabajos;
-    /** Permite editar la columna de llegada. */
-    private boolean llegadasEditables;
+    /** Permite editar las columnas de llegada y prioridad. */
+    private boolean trabajosEditables;
     private JLabel lblReloj;
     /** Tabla de procesos cargados en RAM. */
     private JTable tablaProcesos;
@@ -54,6 +54,8 @@ public class Aplicacion extends JFrame {
     private JLabel lblDistribucionDisco;
     /** Tamaño elegido de memoria virtual. */
     private JSpinner selectorMemoriaVirtual;
+    /** Algoritmo de planificación elegido. */
+    private JComboBox<String> selectorAlgoritmo;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
@@ -90,7 +92,7 @@ public class Aplicacion extends JFrame {
         ventanaConfiguracion = new JDialog(this, "Configurar Simulador", true);
         ventanaConfiguracion.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         ventanaConfiguracion.setContentPane(crearPanelConfiguracion());
-        ventanaConfiguracion.setSize(620, 260);
+        ventanaConfiguracion.setSize(620, 300);
         ventanaConfiguracion.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent evento) {
@@ -146,7 +148,7 @@ public class Aplicacion extends JFrame {
     private JPanel crearPanelConfiguracion() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        JPanel campos = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel campos = new JPanel(new GridLayout(4, 2, 10, 10));
         selectorMemoria = new JSpinner(new SpinnerNumberModel(256, 128, null, 4));
         selectorDisco = new JSpinner(new SpinnerNumberModel(512, 256, null, 4));
         int tamañoDisco = (Integer) selectorDisco.getValue();
@@ -161,6 +163,9 @@ public class Aplicacion extends JFrame {
         campos.add(selectorDisco);
         campos.add(new JLabel("Memoria virtual:"));
         campos.add(selectorMemoriaVirtual);
+        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN"});
+        campos.add(new JLabel("Algoritmo de planificación:"));
+        campos.add(selectorAlgoritmo);
         panel.add(campos, BorderLayout.NORTH);
 
         JPanel distribucion = new JPanel(new GridLayout(2, 1, 0, 5));
@@ -318,10 +323,10 @@ public class Aplicacion extends JFrame {
     private JPanel crearPanelTrabajos() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Lista de Trabajos"));
-        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Estado"}, 0) {
+        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Prioridad", "Estado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
-                return col == 1 && llegadasEditables;
+                return (col == 1 || col == 3) && trabajosEditables;
             }
         };
         tablaTrabajos = new JTable(modeloTrabajos);
@@ -545,6 +550,16 @@ public class Aplicacion extends JFrame {
         selectorMemoria.setEnabled(habilitado);
         selectorDisco.setEnabled(habilitado);
         selectorMemoriaVirtual.setEnabled(habilitado);
+        selectorAlgoritmo.setEnabled(habilitado);
+    }
+
+    /**
+     * Obtiene el algoritmo elegido.
+     *
+     * @return nombre del algoritmo.
+     */
+    public String getAlgoritmoSeleccionado() {
+        return (String) selectorAlgoritmo.getSelectedItem();
     }
 
     /**
@@ -684,12 +699,12 @@ public class Aplicacion extends JFrame {
     }
 
     /**
-     * Habilita la edición de llegadas en la lista de trabajos.
+     * Habilita la edición de llegada y prioridad en la lista de trabajos.
      *
      * @param editables true antes del primer paso.
      */
-    public void setLlegadasEditables(boolean editables) {
-        llegadasEditables = editables;
+    public void setTrabajosEditables(boolean editables) {
+        trabajosEditables = editables;
         if (!editables && tablaTrabajos.isEditing()) {
             tablaTrabajos.getCellEditor().cancelCellEditing();
         }

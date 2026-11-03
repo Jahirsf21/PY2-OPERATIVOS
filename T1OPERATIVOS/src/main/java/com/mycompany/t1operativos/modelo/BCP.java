@@ -488,6 +488,21 @@ public class BCP {
     }
 
     /**
+     * Cambia la prioridad de un proceso nuevo; un número mayor es más prioritario.
+     *
+     * @param prioridad entero de 1 a 10.
+     */
+    public void setPrioridad(int prioridad) {
+        if (prioridad < 1 || prioridad > 10) {
+            throw new IllegalArgumentException("La prioridad debe estar entre 1 y 10.");
+        }
+        if (!"NUEVO".equals(estado)) {
+            throw new IllegalStateException("Solo se cambia la prioridad de un proceso nuevo.");
+        }
+        this.prioridad = prioridad;
+    }
+
+    /**
      * Obtiene el contador de programa guardado.
      *
      * @return el valor del PC.

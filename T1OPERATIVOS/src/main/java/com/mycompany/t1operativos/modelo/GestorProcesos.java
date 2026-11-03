@@ -31,9 +31,10 @@ public class GestorProcesos {
      * @param tamañoMemoria posiciones de RAM.
      * @param tamañoDisco posiciones de disco.
      * @param tamañoMemoriaVirtual posiciones reservadas en disco.
+     * @param algoritmo algoritmo de planificación.
      */
-    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual) {
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual);
+    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo) {
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo);
     }
 
     /**
@@ -74,7 +75,7 @@ public class GestorProcesos {
         corridaIniciada = true;
         admitirLlegadas();
         if (getActual() == null && planificador.hayProcesosListos()) {
-            despachador.despachar(planificador.obtenerSiguiente(), reloj);
+            despachador.despachar(planificador.obtenerSiguiente(reloj), reloj);
         }
         if (getActual() == null) {
             segundosOcio++;
@@ -115,7 +116,7 @@ public class GestorProcesos {
      * Reinicia la simulación conservando capacidades.
      */
     public void limpiar() {
-        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual());
+        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo());
     }
 
     /**
@@ -173,6 +174,15 @@ public class GestorProcesos {
     }
 
     /**
+     * Obtiene el algoritmo de planificación.
+     *
+     * @return nombre del algoritmo.
+     */
+    public String getAlgoritmo() {
+        return planificador.getAlgoritmo();
+    }
+
+    /**
      * Obtiene el reloj simulado.
      *
      * @return segundos transcurridos desde cero.
@@ -191,11 +201,11 @@ public class GestorProcesos {
     }
 
     /**
-     * Comprueba si las llegadas aún se pueden editar.
+     * Comprueba si la llegada y la prioridad aún se pueden editar.
      *
      * @return true antes del primer paso.
      */
-    public boolean puedeEditarLlegadas() {
+    public boolean puedeEditarTrabajos() {
         return !corridaIniciada;
     }
 
@@ -206,13 +216,32 @@ public class GestorProcesos {
      * @param llegada segundo de llegada, no negativo.
      */
     public void cambiarLlegada(int idProceso, int llegada) {
+        buscarEditable(idProceso).setLlegada(llegada);
+    }
+
+    /**
+     * Cambia la prioridad de un proceso antes del primer paso.
+     *
+     * @param idProceso identificador del proceso.
+     * @param prioridad entero de 1 a 10; mayor es más prioritario.
+     */
+    public void cambiarPrioridad(int idProceso, int prioridad) {
+        buscarEditable(idProceso).setPrioridad(prioridad);
+    }
+
+    /**
+     * Busca el BCP de un proceso cuyos datos aún pueden editarse.
+     *
+     * @param idProceso identificador del proceso.
+     * @return BCP del proceso.
+     */
+    private BCP buscarEditable(int idProceso) {
         if (corridaIniciada) {
-            throw new IllegalStateException("Las llegadas solo se editan antes del primer paso.");
+            throw new IllegalStateException("La llegada y la prioridad solo se editan antes del primer paso.");
         }
         for (Proceso proceso : procesosRegistrados) {
             if (proceso.getBCP().getIdProceso() == idProceso) {
-                proceso.getBCP().setLlegada(llegada);
-                return;
+                return proceso.getBCP();
             }
         }
         throw new IllegalArgumentException("No existe el proceso " + idProceso + ".");
@@ -565,8 +594,9 @@ public class GestorProcesos {
      * @param tamañoMemoria posiciones de RAM.
      * @param tamañoDisco posiciones de disco.
      * @param tamañoMemoriaVirtual posiciones reservadas en disco.
+     * @param algoritmo algoritmo de planificación.
      */
-    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual) {
+    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo) {
         if (tamañoMemoria < 128) {
             throw new IllegalArgumentException("La RAM debe ser al menos 128 posiciones.");
         }
@@ -578,7 +608,7 @@ public class GestorProcesos {
         Memoria nuevaMemoria = new Memoria(tamañoMemoria, tamañoKernel);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
-        Planificador nuevoPlanificador = new Planificador();
+        Planificador nuevoPlanificador = new Planificador(algoritmo);
         Despachador nuevoDespachador = new Despachador(new CPU());
         memoria = nuevaMemoria;
         disco = nuevoDisco;
