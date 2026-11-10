@@ -64,6 +64,30 @@ public class Despachador {
     }
 
     /**
+     * Expropia al proceso actual entre instrucciones: guarda su contexto, lo
+     * devuelve a LISTO y libera la CPU. No finaliza el proceso, no libera su
+     * memoria ni cambia su primer inicio.
+     *
+     * @return proceso expropiado.
+     */
+    public Proceso expropiarActual() {
+        if (actual == null) {
+            throw new IllegalStateException("No hay un proceso actual para expropiar.");
+        }
+        BCP bcp = actual.getBCP();
+        if (!"EJECUTANDO".equals(bcp.getEstado())) {
+            throw new IllegalStateException("Solo se expropia un proceso en ejecución.");
+        }
+        Proceso expropiado = actual;
+        bcp.guardarContexto(cpu);
+        bcp.setCpuActual(-1);
+        bcp.setEstadoListo();
+        cpu.reiniciar();
+        actual = null;
+        return expropiado;
+    }
+
+    /**
      * Obtiene el proceso que tiene CPU.
      *
      * @return proceso actual, o null.

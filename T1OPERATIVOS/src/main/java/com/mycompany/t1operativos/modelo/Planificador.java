@@ -33,7 +33,7 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo);
         return disponible;
     }
 
@@ -105,6 +105,9 @@ public class Planificador {
             case "HRRN":
                 int indiceHRRN = HRRN(instante);
                 return indiceHRRN;
+            case "SRT":
+                int indiceSRT = SRT();
+                return indiceSRT;
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -213,6 +216,50 @@ public class Planificador {
             }
         }
         return elegido;
+    }
+
+    /**
+     * Busca el menor tiempo restante; empata por menor llegada y luego por menor ID.
+     *
+     * @return posición del proceso elegido.
+     */
+    private int SRT() {
+        int elegido = 0;
+        for (int i = 1; i < colaListos.size(); i++) {
+            BCP candidato = colaListos.get(i).getBCP();
+            BCP actual = colaListos.get(elegido).getBCP();
+            if (candidato.getRestante() < actual.getRestante()) {
+                elegido = i;
+            } else if (candidato.getRestante() == actual.getRestante()) {
+                if (candidato.getLlegada() < actual.getLlegada()) {
+                    elegido = i;
+                } else if (candidato.getLlegada() == actual.getLlegada() && candidato.getIdProceso() < actual.getIdProceso()) {
+                    elegido = i;
+                }
+            }
+        }
+        return elegido;
+    }
+
+    /**
+     * Indica si el proceso actual debe dejar la CPU. Solo SRT expropia: cuando
+     * algún listo tiene un restante estrictamente menor que el del actual.
+     * El empate no expropia.
+     *
+     * @param actual proceso que tiene la CPU.
+     * @return true si debe expropiarse.
+     */
+    public boolean debeExpropiar(Proceso actual) {
+        boolean expropiar = false;
+        if ("SRT".equals(algoritmo) && actual != null) {
+            int restanteActual = actual.getBCP().getRestante();
+            for (Proceso listo : colaListos) {
+                if (listo.getBCP().getRestante() < restanteActual) {
+                    expropiar = true;
+                }
+            }
+        }
+        return expropiar;
     }
 
     /**

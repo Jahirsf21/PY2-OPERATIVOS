@@ -74,6 +74,9 @@ public class GestorProcesos {
         }
         corridaIniciada = true;
         admitirLlegadas();
+        if (planificador.debeExpropiar(getActual())) {
+            expropiarActual();
+        }
         if (getActual() == null && planificador.hayProcesosListos()) {
             despachador.despachar(planificador.obtenerSiguiente(reloj), reloj);
         }
@@ -569,6 +572,16 @@ public class GestorProcesos {
         }
         boolean tiene = bcp.getPc() <= bcp.getFinMemoria();
         return tiene;
+    }
+
+    /**
+     * Expropia al proceso actual: vuelve a LISTO con su contexto guardado,
+     * conserva su memoria y regresa a la cola de listos.
+     */
+    private void expropiarActual() {
+        Proceso expropiado = despachador.expropiarActual();
+        escribirBCPEnMemoria(expropiado);
+        planificador.agregarListo(expropiado);
     }
 
     /**

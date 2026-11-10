@@ -1,3 +1,5 @@
 MOV AX, 5
+JMP 2
+MOV AX, 9
 MOV DX, 2
 INT 10H

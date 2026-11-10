@@ -1,0 +1,2 @@
+MOV DX, 4
+INT 10H
