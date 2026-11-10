@@ -33,7 +33,8 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        return "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo);
+        return disponible;
     }
 
     /**
@@ -81,7 +82,8 @@ public class Planificador {
         if (!"LISTO".equals(bcp.getEstado())) {
             throw new IllegalStateException("El proceso seleccionado debe estar listo.");
         }
-        return colaListos.remove(indice);
+        Proceso siguiente = colaListos.remove(indice);
+        return siguiente;
     }
 
     /**
@@ -95,11 +97,14 @@ public class Planificador {
             case "FCFS":
                 return 0;
             case "SPN":
-                return elegirMenorRafaga();
+                int indiceSPN = SPN();
+                return indiceSPN;
             case "Prioridad":
-                return elegirMayorPrioridad();
+                int indicePrioridad = Prioridad();
+                return indicePrioridad;
             case "HRRN":
-                return elegirMayorRazonRespuesta(instante);
+                int indiceHRRN = HRRN(instante);
+                return indiceHRRN;
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -110,7 +115,7 @@ public class Planificador {
      *
      * @return posición del proceso elegido.
      */
-    private int elegirMenorRafaga() {
+    private int SPN() {
         int elegido = 0;
         for (int i = 1; i < colaListos.size(); i++) {
             BCP candidato = colaListos.get(i).getBCP();
@@ -133,7 +138,7 @@ public class Planificador {
      *
      * @return posición del proceso elegido.
      */
-    private int elegirMayorPrioridad() {
+    private int Prioridad() {
         int elegido = 0;
         for (int i = 1; i < colaListos.size(); i++) {
             BCP candidato = colaListos.get(i).getBCP();
@@ -152,30 +157,59 @@ public class Planificador {
     }
 
     /**
-     * Busca la mayor razón de respuesta (espera + ráfaga) / ráfaga, con
-     * espera = instante - llegada; empata por menor llegada y luego por menor ID.
-     * Las razones se comparan multiplicando en cruz, sin división entera.
-     *
+     * Calcula la razon de respuesta (espera + rafaga) / rafaga.
+     * @param proceso BCP del proceso listo.
      * @param instante segundo actual del reloj simulado.
-     * @return posición del proceso elegido.
+     * @return razon de respuesta del proceso.
      */
-    private int elegirMayorRazonRespuesta(int instante) {
+    private double razonRespuesta(BCP proceso, int instante) {
+        int espera = instante - proceso.getLlegada();
+        double razon = (double) (espera + proceso.getRafaga()) / proceso.getRafaga();
+        return razon;
+    }
+
+    /**
+     * Compara dos procesos por mayos razon de respuesta, empata por menor llegada y luego por menor ID.
+     * @param a proceso candidato.
+     * @param b proceso elegido hasta el momento.
+     * @param instante segundo actual del reloj simulado.
+     * @return true si a debe ir antes que b.
+     */
+    private boolean tienePrioridad(BCP a, BCP b, int instante) {
+        double razonA = razonRespuesta(a, instante);
+        double razonB = razonRespuesta(b, instante);
+
+        if (razonA > razonB) {
+            return true;
+        }
+        if (razonA < razonB) {
+            return false;
+        }
+        if (a.getLlegada() < b.getLlegada()) {
+            return true;
+        }
+        if (a.getLlegada() > b.getLlegada()) {
+            return false;
+        }
+
+        if (a.getIdProceso() < b.getIdProceso()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Busca la mayor razon de respuesta, empata por menor llegada y luego por menor ID.
+     * @param instante segundo actual de reloj simulado.
+     * @return posicion del proceso elegido.
+     */
+    private int HRRN(int instante) {
         int elegido = 0;
         for (int i = 1; i < colaListos.size(); i++) {
             BCP candidato = colaListos.get(i).getBCP();
             BCP actual = colaListos.get(elegido).getBCP();
-            int numeradorCandidato = instante - candidato.getLlegada() + candidato.getRafaga();
-            int numeradorActual = instante - actual.getLlegada() + actual.getRafaga();
-            int izquierda = numeradorCandidato * actual.getRafaga();
-            int derecha = numeradorActual * candidato.getRafaga();
-            if (izquierda > derecha) {
+            if (tienePrioridad(candidato, actual, instante)) {
                 elegido = i;
-            } else if (izquierda == derecha) {
-                if (candidato.getLlegada() < actual.getLlegada()) {
-                    elegido = i;
-                } else if (candidato.getLlegada() == actual.getLlegada() && candidato.getIdProceso() < actual.getIdProceso()) {
-                    elegido = i;
-                }
             }
         }
         return elegido;
@@ -187,7 +221,8 @@ public class Planificador {
      * @return true si la cola no está vacía.
      */
     public boolean hayProcesosListos() {
-        return !colaListos.isEmpty();
+        boolean hay = !colaListos.isEmpty();
+        return hay;
     }
 
     /**

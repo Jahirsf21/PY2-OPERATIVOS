@@ -531,15 +531,17 @@ public class Aplicacion extends JFrame {
         modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Prioridad", "Estado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
-                return (col == 1 || col == 3) && trabajosEditables;
+                boolean editable = (col == 1 || col == 3) && trabajosEditables;
+                return editable;
             }
         };
         tablaTrabajos = new JTable(modeloTrabajos);
         EstiloUI.aplicarEstiloTabla(tablaTrabajos, new RendererLista());
         tablaTrabajos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         configurarTablaLista(tablaTrabajos);
-        return EstiloUI.crearTarjetaConTitulo("Lista de Trabajos", EstiloUI.iconoTarjetaTrabajos(),
+        JPanel tarjeta = EstiloUI.crearTarjetaConTitulo("Lista de Trabajos", EstiloUI.iconoTarjetaTrabajos(),
                 EstiloUI.ACENTO_AMBAR, EstiloUI.crearScroll(tablaTrabajos));
+        return tarjeta;
     }
 
     /**
@@ -558,8 +560,9 @@ public class Aplicacion extends JFrame {
         EstiloUI.aplicarEstiloTabla(tablaProcesos, new RendererLista());
         tablaProcesos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         configurarTablaLista(tablaProcesos);
-        return EstiloUI.crearTarjetaConTitulo("Lista de Procesos", EstiloUI.iconoTarjetaProcesos(),
+        JPanel tarjeta = EstiloUI.crearTarjetaConTitulo("Lista de Procesos", EstiloUI.iconoTarjetaProcesos(),
                 EstiloUI.ACENTO_VERDE, EstiloUI.crearScroll(tablaProcesos));
+        return tarjeta;
     }
 
     /**
@@ -868,8 +871,9 @@ public class Aplicacion extends JFrame {
         scroll.getViewport().setBackground(EstiloUI.CONSOLA_FONDO);
         EstiloUI.aplicarBarras(scroll, EstiloUI.CONSOLA_PULGAR, EstiloUI.CONSOLA_PULGAR_HOVER, EstiloUI.CONSOLA_FONDO);
 
-        return EstiloUI.crearTarjetaConTitulo("Consola", EstiloUI.iconoTarjetaConsola(),
+        JPanel tarjeta = EstiloUI.crearTarjetaConTitulo("Consola", EstiloUI.iconoTarjetaConsola(),
                 EstiloUI.CONSOLA_FONDO, scroll);
+        return tarjeta;
     }
 
     /**
@@ -908,7 +912,8 @@ public class Aplicacion extends JFrame {
      * @return la cantidad seleccionada de posiciones de memoria.
      */
     public int getMemoriaSeleccionada() {
-        return leerTamañoSeleccionado(selectorMemoria, "RAM");
+        int tamaño = leerTamañoSeleccionado(selectorMemoria, "RAM");
+        return tamaño;
     }
 
     /**
@@ -917,7 +922,8 @@ public class Aplicacion extends JFrame {
      * @return la cantidad seleccionada de posiciones del disco.
      */
     public int getDiscoSeleccionado() {
-        return leerTamañoSeleccionado(selectorDisco, "disco");
+        int tamaño = leerTamañoSeleccionado(selectorDisco, "disco");
+        return tamaño;
     }
 
     /**
@@ -926,7 +932,8 @@ public class Aplicacion extends JFrame {
      * @return cantidad de posiciones reservadas.
      */
     public int getMemoriaVirtualSeleccionada() {
-        return leerTamañoSeleccionado(selectorMemoriaVirtual, "memoria virtual");
+        int tamaño = leerTamañoSeleccionado(selectorMemoriaVirtual, "memoria virtual");
+        return tamaño;
     }
 
     /**
@@ -942,7 +949,8 @@ public class Aplicacion extends JFrame {
         } catch (ParseException ex) {
             throw new IllegalArgumentException("Tamaño de " + nombre + " inválido: " + ex.getMessage());
         }
-        return (Integer) selector.getValue();
+        int tamaño = (Integer) selector.getValue();
+        return tamaño;
     }
 
     /**
@@ -975,7 +983,8 @@ public class Aplicacion extends JFrame {
      * @return nombre del algoritmo.
      */
     public String getAlgoritmoSeleccionado() {
-        return (String) selectorAlgoritmo.getSelectedItem();
+        String algoritmo = (String) selectorAlgoritmo.getSelectedItem();
+        return algoritmo;
     }
 
     // ================================================================
@@ -1215,7 +1224,8 @@ public class Aplicacion extends JFrame {
                 }
                 return EstiloUI.COLOR_KERNEL_BCP;
             }
-            return super.fondo(tabla, valor, fila, columna);
+            Color color = super.fondo(tabla, valor, fila, columna);
+            return color;
         }
 
         @Override
@@ -1245,7 +1255,8 @@ public class Aplicacion extends JFrame {
             if (fila >= total - virtual) {
                 return EstiloUI.COLOR_DISCO_VIRTUAL;
             }
-            return super.fondo(tabla, valor, fila, columna);
+            Color color = super.fondo(tabla, valor, fila, columna);
+            return color;
         }
 
         @Override
@@ -1271,7 +1282,8 @@ public class Aplicacion extends JFrame {
     private static class RendererLista extends EstiloUI.RendererCelda {
 
         private boolean esColumnaEstado(JTable tabla, int columna) {
-            return "Estado".equals(tabla.getColumnName(columna));
+            boolean esEstado = "Estado".equals(tabla.getColumnName(columna));
+            return esEstado;
         }
 
         @Override
@@ -1279,7 +1291,8 @@ public class Aplicacion extends JFrame {
             if (tabla.isCellEditable(fila, columna)) {
                 return EstiloUI.COLOR_EDITABLE;
             }
-            return super.fondo(tabla, valor, fila, columna);
+            Color color = super.fondo(tabla, valor, fila, columna);
+            return color;
         }
 
         @Override
@@ -1288,7 +1301,8 @@ public class Aplicacion extends JFrame {
                 if (valor == null) {
                     return EstiloUI.TEXTO_SECUNDARIO;
                 }
-                return EstiloUI.colorEstado(valor.toString());
+                Color color = EstiloUI.colorEstado(valor.toString());
+                return color;
             }
             return EstiloUI.TEXTO;
         }
@@ -1298,7 +1312,8 @@ public class Aplicacion extends JFrame {
             if (esColumnaEstado(tabla, columna)) {
                 return EstiloUI.FUENTE_MONO_BOLD;
             }
-            return tabla.getFont();
+            Font fuente = tabla.getFont();
+            return fuente;
         }
 
         @Override
@@ -1306,7 +1321,8 @@ public class Aplicacion extends JFrame {
             if (tabla.isCellEditable(fila, columna)) {
                 return "Doble clic para editar";
             }
-            return super.tooltip(tabla, valor, fila, columna);
+            String texto = super.tooltip(tabla, valor, fila, columna);
+            return texto;
         }
     }
 
@@ -1322,7 +1338,8 @@ public class Aplicacion extends JFrame {
 
         @Override
         public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
+            Dimension tamaño = getPreferredSize();
+            return tamaño;
         }
 
         @Override
@@ -1332,7 +1349,8 @@ public class Aplicacion extends JFrame {
 
         @Override
         public int getScrollableBlockIncrement(Rectangle visible, int orientacion, int direccion) {
-            return Math.max(16, visible.height - 32);
+            int incremento = Math.max(16, visible.height - 32);
+            return incremento;
         }
 
         @Override
@@ -1342,7 +1360,8 @@ public class Aplicacion extends JFrame {
 
         @Override
         public boolean getScrollableTracksViewportHeight() {
-            return getParent() instanceof JViewport && getParent().getHeight() > getPreferredSize().height;
+            boolean ajustar = getParent() instanceof JViewport && getParent().getHeight() > getPreferredSize().height;
+            return ajustar;
         }
     }
 

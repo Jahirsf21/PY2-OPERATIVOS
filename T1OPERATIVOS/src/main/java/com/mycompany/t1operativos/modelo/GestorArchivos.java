@@ -96,7 +96,8 @@ public class GestorArchivos {
         if (contenido.isEmpty()) {
             throw new IllegalStateException("El archivo " + nombre + " está vacío; todavía no contiene un número.");
         }
-        return Integer.parseInt(contenido);
+        int valor = Integer.parseInt(contenido);
+        return valor;
     }
 
     /**
@@ -284,7 +285,8 @@ public class GestorArchivos {
                 libres = 0;
             }
             if (libres == cantidad) {
-                return posicion - cantidad + 1;
+                int inicioLibre = posicion - cantidad + 1;
+                return inicioLibre;
             }
         }
         throw new IllegalStateException("El disco no tiene un bloque de datos libre para las " + cantidad + " posiciones del archivo.");

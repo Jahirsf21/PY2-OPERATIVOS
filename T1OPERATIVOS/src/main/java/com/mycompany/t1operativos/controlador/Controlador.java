@@ -366,7 +366,8 @@ public class Controlador {
         if (instante < 0) {
             return "-";
         }
-        return String.valueOf(instante);
+        String texto = String.valueOf(instante);
+        return texto;
     }
 
     /**

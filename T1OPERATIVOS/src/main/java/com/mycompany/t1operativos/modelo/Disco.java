@@ -37,7 +37,8 @@ public class Disco {
      */
     public String[] leer(int posicion) {
         validarDireccion(posicion);
-        return disco[posicion];
+        String[] contenido = disco[posicion];
+        return contenido;
     }
 
     /**
@@ -126,7 +127,8 @@ public class Disco {
      */
     public boolean esDireccionIndice(int posicion) {
         validarDireccion(posicion);
-        return posicion < inicioDatos;
+        boolean esIndice = posicion < inicioDatos;
+        return esIndice;
     }
 
     /**
@@ -137,7 +139,8 @@ public class Disco {
      */
     public boolean esDireccionMemoriaVirtual(int posicion) {
         validarDireccion(posicion);
-        return posicion >= inicioMemoriaVirtual;
+        boolean esVirtual = posicion >= inicioMemoriaVirtual;
+        return esVirtual;
     }
 
     /**
@@ -146,7 +149,8 @@ public class Disco {
      * @return la cantidad de posiciones del disco.
      */
     public int getTamañoTotal() {
-        return disco.length;
+        int tamaño = disco.length;
+        return tamaño;
     }
 
     /**

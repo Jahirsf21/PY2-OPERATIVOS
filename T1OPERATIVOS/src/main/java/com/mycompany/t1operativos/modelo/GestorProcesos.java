@@ -143,7 +143,8 @@ public class GestorProcesos {
      * @return CPU del despachador.
      */
     public CPU getCPU() {
-        return despachador.getCPU();
+        CPU cpu = despachador.getCPU();
+        return cpu;
     }
 
     /**
@@ -152,7 +153,8 @@ public class GestorProcesos {
      * @return proceso actual, o null.
      */
     public Proceso getActual() {
-        return despachador.getActual();
+        Proceso actual = despachador.getActual();
+        return actual;
     }
 
     /**
@@ -170,7 +172,8 @@ public class GestorProcesos {
      * @return true si queda algún proceso sin terminar, aunque aún no haya llegado.
      */
     public boolean puedeEjecutar() {
-        return hayProcesosSinTerminar();
+        boolean puede = hayProcesosSinTerminar();
+        return puede;
     }
 
     /**
@@ -179,7 +182,8 @@ public class GestorProcesos {
      * @return nombre del algoritmo.
      */
     public String getAlgoritmo() {
-        return planificador.getAlgoritmo();
+        String algoritmo = planificador.getAlgoritmo();
+        return algoritmo;
     }
 
     /**
@@ -206,7 +210,8 @@ public class GestorProcesos {
      * @return true antes del primer paso.
      */
     public boolean puedeEditarTrabajos() {
-        return !corridaIniciada;
+        boolean editable = !corridaIniciada;
+        return editable;
     }
 
     /**
@@ -241,7 +246,8 @@ public class GestorProcesos {
         }
         for (Proceso proceso : procesosRegistrados) {
             if (proceso.getBCP().getIdProceso() == idProceso) {
-                return proceso.getBCP();
+                BCP bcp = proceso.getBCP();
+                return bcp;
             }
         }
         throw new IllegalArgumentException("No existe el proceso " + idProceso + ".");
@@ -344,7 +350,8 @@ public class GestorProcesos {
                 libres = 0;
             }
             if (libres == cantidad) {
-                return posicion - cantidad + 1;
+                int inicioBloque = posicion - cantidad + 1;
+                return inicioBloque;
             }
         }
         return -1;
@@ -387,10 +394,11 @@ public class GestorProcesos {
      * @return etiquetas representadas en kernel.
      */
     private String[] getCamposBCP() {
-        return new String[]{"idProceso", "estado", "prioridad", "pc", "inicioMemoria", "finMemoria",
+        String[] campos = new String[]{"idProceso", "estado", "prioridad", "pc", "inicioMemoria", "finMemoria",
             "ir", "ac", "ax", "bx", "cx", "dx", "ah", "al", "flag", "pila1", "pila2", "pila3", "pila4",
             "pila5", "punteroPila", "cpuActual", "llegada", "rafaga", "tiempoInicio", "tiempoFinal",
             "tiempoServicio", "direccionSiguienteBCP", "archivosAbiertos"};
+        return campos;
     }
 
     /**
@@ -559,7 +567,8 @@ public class GestorProcesos {
         if (bcp.getPc() < bcp.getInicioMemoria() || bcp.getPc() > bcp.getFinMemoria() + 1) {
             throw new IllegalStateException("El PC está fuera de los límites del programa.");
         }
-        return bcp.getPc() <= bcp.getFinMemoria();
+        boolean tiene = bcp.getPc() <= bcp.getFinMemoria();
+        return tiene;
     }
 
     /**

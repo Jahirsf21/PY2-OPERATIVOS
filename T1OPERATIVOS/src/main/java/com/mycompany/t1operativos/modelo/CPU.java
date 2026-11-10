@@ -198,7 +198,8 @@ public class CPU {
                 return cx;
             case "DX":
                 try {
-                    return Integer.parseInt(dx);
+                    int valor = Integer.parseInt(dx);
+                    return valor;
                 } catch (NumberFormatException e) {
                     throw new IllegalStateException("DX contiene texto y no puede usarse como número: " + dx);
                 }
@@ -239,7 +240,8 @@ public class CPU {
      * @return {@code true} si el valor es AX, BX, CX o DX.
      */
     private boolean esRegistro(String valor) {
-        return "AX".equals(valor) || "BX".equals(valor) || "CX".equals(valor) || "DX".equals(valor);
+        boolean esValido = "AX".equals(valor) || "BX".equals(valor) || "CX".equals(valor) || "DX".equals(valor);
+        return esValido;
     }
 
     /**

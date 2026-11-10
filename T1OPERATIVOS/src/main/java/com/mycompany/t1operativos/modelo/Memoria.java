@@ -83,7 +83,8 @@ public class Memoria {
      */
     public String[] leer(int posicion) {
         validarDireccion(posicion);
-        return memoria[posicion];
+        String[] contenido = memoria[posicion];
+        return contenido;
     }
 
     /**
@@ -134,7 +135,8 @@ public class Memoria {
      */
     public boolean esDireccionKernel(int posicion) {
         validarDireccion(posicion);
-        return posicion < inicioUsuario;
+        boolean esKernel = posicion < inicioUsuario;
+        return esKernel;
     }
 
     /**
@@ -143,6 +145,7 @@ public class Memoria {
      * @return la cantidad de posiciones de memoria.
      */
     public int getTamañoTotal() {
-        return memoria.length;
+        int tamaño = memoria.length;
+        return tamaño;
     }
 }

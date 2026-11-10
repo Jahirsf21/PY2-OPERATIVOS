@@ -249,7 +249,8 @@ public class BCP {
      * @return la cantidad de valores presentes.
      */
     public int getCantidadEnPila() {
-        return punteroPila + 1;
+        int cantidad = punteroPila + 1;
+        return cantidad;
     }
 
     /**
@@ -349,7 +350,8 @@ public class BCP {
         if (tiempoEmpleadoSegundos >= rafaga) {
             return 0;
         }
-        return rafaga - tiempoEmpleadoSegundos;
+        int restante = rafaga - tiempoEmpleadoSegundos;
+        return restante;
     }
 
     /**
@@ -398,7 +400,8 @@ public class BCP {
      * @return la instrucción en ensamblador, o una cadena vacía si no hay una instrucción.
      */
     public String getIrToString() {
-        return new Parser().traducirInstruccion(ir);
+        String texto = new Parser().traducirInstruccion(ir);
+        return texto;
     }
 
     /**
@@ -547,7 +550,8 @@ public class BCP {
         if (inicioMemoria == -1) {
             return 0;
         }
-        return finMemoria - inicioMemoria + 1;
+        int alcance = finMemoria - inicioMemoria + 1;
+        return alcance;
     }
 
     /**
