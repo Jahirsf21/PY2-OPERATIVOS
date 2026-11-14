@@ -33,7 +33,7 @@ public class Aplicacion extends JFrame {
      * Coinciden con los que arma el controlador en actualizarBCP().
      */
     private static final String[] CAMPOS_BCP = {
-            "ID", "Estado", "Prioridad", "Posición BCP", "Inicio memoria", "Fin memoria",
+            "ID", "Estado", "Prioridad", "Boletos", "Posición BCP", "Inicio memoria", "Fin memoria",
             "PC", "IR", "AC",
             "AX", "BX", "CX", "DX", "AH", "AL", "Flag",
             "Pila 1", "Pila 2", "Pila 3", "Pila 4", "Pila 5", "Puntero pila",
@@ -240,7 +240,7 @@ public class Aplicacion extends JFrame {
         EstiloUI.estilizarSpinner(selectorMemoria);
         EstiloUI.estilizarSpinner(selectorDisco);
         EstiloUI.estilizarSpinner(selectorMemoriaVirtual);
-        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR"});
+        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery"});
         EstiloUI.estilizarCombo(selectorAlgoritmo);
         selectorAlgoritmo.setPreferredSize(new Dimension(130, 34));
         selectorQuantum = new JSpinner(new SpinnerNumberModel(1, 1, null, 1));
@@ -277,7 +277,7 @@ public class Aplicacion extends JFrame {
                 "Política para elegir el siguiente proceso.", selectorAlgoritmo));
         tarjetaPlanificacion.add(Box.createVerticalStrut(10));
         tarjetaPlanificacion.add(crearFilaCampo("Quantum",
-                "Segundos por turno en RR.", selectorQuantum));
+                "Segundos por turno en RR y Lottery.", selectorQuantum));
 
         JPanel cuerpo = new JPanel(new GridBagLayout());
         cuerpo.setBackground(EstiloUI.FONDO);
@@ -305,7 +305,7 @@ public class Aplicacion extends JFrame {
             actualizarDistribucionDisco();
         });
         selectorMemoriaVirtual.addChangeListener(e -> actualizarDistribucionDisco());
-        selectorAlgoritmo.addActionListener(e -> selectorQuantum.setEnabled(selectorAlgoritmo.isEnabled() && "RR".equals(getAlgoritmoSeleccionado())));
+        selectorAlgoritmo.addActionListener(e -> selectorQuantum.setEnabled(selectorAlgoritmo.isEnabled() && usaQuantum()));
         actualizarDistribucionMemoria();
         actualizarDistribucionDisco();
 
@@ -399,7 +399,9 @@ public class Aplicacion extends JFrame {
             getMemoriaSeleccionada();
             getDiscoSeleccionado();
             getMemoriaVirtualSeleccionada();
+            getQuantumSeleccionado();
             ventanaConfiguracion.setVisible(false);
+            firePropertyChange("Configuración confirmada", null, Boolean.TRUE);
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(ventanaConfiguracion, ex.getMessage(), "Configuración inválida", JOptionPane.ERROR_MESSAGE);
         }
@@ -537,10 +539,10 @@ public class Aplicacion extends JFrame {
      * @return panel de trabajos y estados.
      */
     private JPanel crearPanelTrabajos() {
-        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Prioridad", "Estado"}, 0) {
+        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Prioridad", "Boletos", "Estado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
-                boolean editable = (col == 1 || col == 3) && trabajosEditables;
+                boolean editable = (col == 1 || col == 3 || col == 4) && trabajosEditables;
                 return editable;
             }
         };
@@ -977,7 +979,18 @@ public class Aplicacion extends JFrame {
         selectorDisco.setEnabled(habilitado);
         selectorMemoriaVirtual.setEnabled(habilitado);
         selectorAlgoritmo.setEnabled(habilitado);
-        selectorQuantum.setEnabled(habilitado && "RR".equals(getAlgoritmoSeleccionado()));
+        selectorQuantum.setEnabled(habilitado && usaQuantum());
+    }
+
+    /**
+     * Indica si el algoritmo elegido usa quantum.
+     *
+     * @return true para RR y Lottery.
+     */
+    private boolean usaQuantum() {
+        String algoritmo = getAlgoritmoSeleccionado();
+        boolean usa = "RR".equals(algoritmo) || "Lottery".equals(algoritmo);
+        return usa;
     }
 
     /**

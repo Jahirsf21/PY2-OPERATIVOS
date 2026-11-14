@@ -12,6 +12,7 @@ public class BCP {
     private int idProceso;
     private String estado;
     private int prioridad;
+    private int boletos;
     private int pc;
     private int inicioMemoria;
     private int finMemoria;
@@ -75,6 +76,7 @@ public class BCP {
         this.idProceso = idProceso;
         this.estado = "NUEVO";
         this.prioridad = prioridad;
+        this.boletos = 1;
         this.pc = -1;
         this.inicioMemoria = -1;
         this.finMemoria = -1;
@@ -416,6 +418,30 @@ public class BCP {
      */
     public int getPrioridad() {
         return prioridad;
+    }
+
+    /**
+     * Obtiene los boletos del proceso para Lottery.
+     *
+     * @return cantidad de boletos.
+     */
+    public int getBoletos() {
+        return boletos;
+    }
+
+    /**
+     * Cambia los boletos de un proceso nuevo.
+     *
+     * @param boletos entero de 1 a 100.
+     */
+    public void setBoletos(int boletos) {
+        if (boletos < 1 || boletos > 100) {
+            throw new IllegalArgumentException("Los boletos deben estar entre 1 y 100.");
+        }
+        if (!"NUEVO".equals(estado)) {
+            throw new IllegalStateException("Solo se cambian los boletos de un proceso nuevo.");
+        }
+        this.boletos = boletos;
     }
 
     /**

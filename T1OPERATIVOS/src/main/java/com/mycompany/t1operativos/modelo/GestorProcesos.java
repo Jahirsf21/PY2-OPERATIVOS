@@ -243,6 +243,15 @@ public class GestorProcesos {
     }
 
     /**
+     * Obtiene el resultado del último sorteo de Lottery.
+     *
+     * @return boleto, total y ganador, o null si no hubo sorteo.
+     */
+    public String getUltimoSorteo() {
+        return planificador.getUltimoSorteo();
+    }
+
+    /**
      * Obtiene el reloj simulado.
      *
      * @return segundos transcurridos desde cero.
@@ -290,6 +299,16 @@ public class GestorProcesos {
     }
 
     /**
+     * Cambia los boletos de un proceso antes del primer paso.
+     *
+     * @param idProceso identificador del proceso.
+     * @param boletos entero de 1 a 100.
+     */
+    public void cambiarBoletos(int idProceso, int boletos) {
+        buscarEditable(idProceso).setBoletos(boletos);
+    }
+
+    /**
      * Busca el BCP de un proceso cuyos datos aún pueden editarse.
      *
      * @param idProceso identificador del proceso.
@@ -297,7 +316,7 @@ public class GestorProcesos {
      */
     private BCP buscarEditable(int idProceso) {
         if (corridaIniciada) {
-            throw new IllegalStateException("La llegada y la prioridad solo se editan antes del primer paso.");
+            throw new IllegalStateException("La llegada, la prioridad y los boletos solo se editan antes del primer paso.");
         }
         for (Proceso proceso : procesosRegistrados) {
             if (proceso.getBCP().getIdProceso() == idProceso) {
@@ -452,7 +471,7 @@ public class GestorProcesos {
      * @return etiquetas representadas en kernel.
      */
     private String[] getCamposBCP() {
-        return new String[]{"idProceso", "estado", "prioridad", "pc", "inicioMemoria", "finMemoria",
+        return new String[]{"idProceso", "estado", "prioridad", "boletos", "pc", "inicioMemoria", "finMemoria",
             "ir", "ac", "ax", "bx", "cx", "dx", "ah", "al", "flag", "pila1", "pila2", "pila3", "pila4",
             "pila5", "punteroPila", "cpuActual", "llegada", "rafaga", "tiempoInicio", "tiempoFinal",
             "tiempoServicio", "direccionSiguienteBCP", "archivosAbiertos"};
@@ -468,6 +487,7 @@ public class GestorProcesos {
         int posicion = proceso.getPosicionBCP();
         BCP bcp = proceso.getBCP();
         String[] valores = {String.valueOf(bcp.getIdProceso()), bcp.getEstado(), String.valueOf(bcp.getPrioridad()),
+            String.valueOf(bcp.getBoletos()),
             String.valueOf(bcp.getPc()), String.valueOf(bcp.getInicioMemoria()), String.valueOf(bcp.getFinMemoria()),
             bcp.getIrToString(), String.valueOf(bcp.getAc()), String.valueOf(bcp.getAx()), String.valueOf(bcp.getBx()),
             String.valueOf(bcp.getCx()), bcp.getDx(), String.valueOf(bcp.getAh()), String.valueOf(bcp.getAl()),

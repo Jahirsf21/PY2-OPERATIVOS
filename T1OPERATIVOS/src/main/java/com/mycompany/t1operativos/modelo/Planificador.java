@@ -2,6 +2,7 @@ package com.mycompany.t1operativos.modelo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Mantiene los procesos listos y elige el siguiente según el algoritmo
@@ -13,6 +14,8 @@ public class Planificador {
     private List<Proceso> colaListos;
     private String algoritmo;
     private int quantum;
+    private Random sorteo;
+    private String ultimoSorteo;
 
     /**
      * Construye una cola vacía de procesos listos para CPU.
@@ -30,6 +33,8 @@ public class Planificador {
         colaListos = new ArrayList<>();
         this.algoritmo = algoritmo;
         this.quantum = quantum;
+        this.sorteo = new Random();
+        this.ultimoSorteo = null;
     }
 
     /**
@@ -39,7 +44,7 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo);
         return disponible;
     }
 
@@ -120,6 +125,8 @@ public class Planificador {
                 return SRT();
             case "RR":
                 return 0;
+            case "Lottery":
+                return Lottery();
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -254,6 +261,39 @@ public class Planificador {
     }
 
     /**
+     * Sortea un boleto entre los listos; gana el proceso dueño de ese boleto.
+     *
+     * @return posición del proceso elegido.
+     */
+    private int Lottery() {
+        int totalBoletos = 0;
+        for (Proceso listo : colaListos) {
+            totalBoletos = totalBoletos + listo.getBCP().getBoletos();
+        }
+        int boleto = sorteo.nextInt(totalBoletos) + 1;
+        int acumulado = 0;
+        int elegido = 0;
+        for (int i = 0; i < colaListos.size(); i++) {
+            acumulado = acumulado + colaListos.get(i).getBCP().getBoletos();
+            if (boleto <= acumulado) {
+                elegido = i;
+                break;
+            }
+        }
+        ultimoSorteo = "boleto " + boleto + " de " + totalBoletos + " → P" + colaListos.get(elegido).getBCP().getIdProceso();
+        return elegido;
+    }
+
+    /**
+     * Obtiene el resultado del último sorteo de Lottery.
+     *
+     * @return boleto, totalBoletos y ganador, o null si no hubo sorteo.
+     */
+    public String getUltimoSorteo() {
+        return ultimoSorteo;
+    }
+
+    /**
      * Indica si el proceso actual debe dejar la CPU.
      * SRT expropia: cuando algún listo tiene un restante estrictamente menor que el del actual.
      * El empate no expropia.
@@ -276,13 +316,13 @@ public class Planificador {
 
     /**
      * Indica si el proceso actual debe dejar la CPU por quantum.
-     * RR expropia cuando su turno alcanza el quantum configurado.
+     * RR y Lottery expropian cuando su turno alcanza el quantum configurado.
      *
      * @param segundosTurno segundos ejecutados desde su despacho.
      * @return true si debe expropiarse.
      */
     public boolean agotoQuantum(int segundosTurno) {
-        boolean agotado = "RR".equals(algoritmo) && segundosTurno >= quantum;
+        boolean agotado = ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) && segundosTurno >= quantum;
         return agotado;
     }
 

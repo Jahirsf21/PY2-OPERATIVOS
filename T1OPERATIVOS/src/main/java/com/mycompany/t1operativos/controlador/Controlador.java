@@ -66,6 +66,7 @@ public class Controlador {
      * Registra los eventos de la vista.
      */
     private void registrarEventos() {
+        vista.addPropertyChangeListener("Configuración confirmada", evento -> actualizarVista());
         vista.addPropertyChangeListener("Archivos cargados", evento -> {
             if (!(evento.getNewValue() instanceof List<?> seleccion)) {
                 mostrarError("La selección debe contener una lista de archivos.");
@@ -89,7 +90,7 @@ public class Controlador {
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
         vista.getModeloTrabajos().addTableModelListener(e -> {
-            if (e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 1 || e.getColumn() == 3)) {
+            if (e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 1 || e.getColumn() == 3 || e.getColumn() == 4)) {
                 cambiarDatoTrabajo(e.getFirstRow(), e.getColumn());
             }
         });
@@ -237,7 +238,7 @@ public class Controlador {
      * Entrega al gestor la llegada o prioridad editada en la lista de trabajos.
      *
      * @param fila fila editada.
-     * @param columna 1 para llegada, 3 para prioridad.
+     * @param columna 1 para llegada, 3 para prioridad, 4 para boletos.
      */
     private void cambiarDatoTrabajo(int fila, int columna) {
         if (gestor == null) {
@@ -249,14 +250,18 @@ public class Controlador {
             int valor = Integer.parseInt(String.valueOf(modelo.getValueAt(fila, columna)).trim());
             if (columna == 1) {
                 gestor.cambiarLlegada(idProceso, valor);
-            } else {
+            } else if (columna == 3) {
                 gestor.cambiarPrioridad(idProceso, valor);
+            } else {
+                gestor.cambiarBoletos(idProceso, valor);
             }
         } catch (NumberFormatException ex) {
             if (columna == 1) {
                 mostrarError("La llegada debe ser un entero no negativo.");
-            } else {
+            } else if (columna == 3) {
                 mostrarError("La prioridad debe ser un entero de 1 a 10.");
+            } else {
+                mostrarError("Los boletos deben ser un entero de 1 a 100.");
             }
         } catch (IllegalArgumentException | IllegalStateException ex) {
             mostrarError(ex.getMessage());
@@ -365,7 +370,7 @@ public class Controlador {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 BCP bcp = proceso.getBCP();
                 if ("NUEVO".equals(bcp.getEstado())) {
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getEstado()});
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getBoletos(), bcp.getEstado()});
                 }
             }
         }
@@ -394,15 +399,23 @@ public class Controlador {
         int reloj = 0;
         int ocio = 0;
         String algoritmo = vista.getAlgoritmoSeleccionado();
-        if (gestor != null) {
+        int quantum = vista.getQuantumSeleccionado();
+        String sorteo = null;
+        if (gestor != null && !gestor.getProcesosRegistrados().isEmpty()) {
             reloj = gestor.getReloj();
             ocio = gestor.getSegundosOcio();
             algoritmo = gestor.getAlgoritmo();
-            if ("RR".equals(algoritmo)) {
-                algoritmo = algoritmo + " (q = " + gestor.getQuantum() + ")";
-            }
+            quantum = gestor.getQuantum();
+            sorteo = gestor.getUltimoSorteo();
         }
-        vista.mostrarReloj("Algoritmo: " + algoritmo + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
+        String texto = algoritmo;
+        if ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) {
+            texto = texto + " (q = " + quantum + ")";
+        }
+        if (sorteo != null) {
+            texto = texto + "    Sorteo: " + sorteo;
+        }
+        vista.mostrarReloj("Algoritmo: " + texto + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
     }
 
     /**
@@ -459,6 +472,7 @@ public class Controlador {
         String texto = "ID: " + bcp.getIdProceso()
                 + "\nEstado: " + bcp.getEstado()
                 + "\nPrioridad: " + bcp.getPrioridad()
+                + "\nBoletos: " + bcp.getBoletos()
                 + "\nPosición BCP: " + proceso.getPosicionBCP()
                 + "\nInicio memoria: " + bcp.getInicioMemoria()
                 + "\nFin memoria: " + bcp.getFinMemoria()
