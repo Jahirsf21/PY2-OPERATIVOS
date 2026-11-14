@@ -84,7 +84,8 @@ public class GestorProcesos {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
         corridaIniciada = true;
-        boolean cambio = admitirLlegadas();
+        admitirLlegadas();
+        boolean cambio = admitirEnMemoria();
         if (planificador.debeExpropiar(getActual())) {
             expropiarActual();
             cambio = true;
@@ -343,11 +344,9 @@ public class GestorProcesos {
 
     /**
      * Pasa a la cola de trabajos los procesos cuya llegada ya ocurrió, por
-     * llegada y luego por orden de registro, y los carga en RAM si caben.
-     *
-     * @return true si algún proceso pasó a LISTO.
+     * llegada y luego por orden de registro.
      */
-    private boolean admitirLlegadas() {
+    private void admitirLlegadas() {
         while (true) {
             Proceso siguiente = null;
             for (Proceso proceso : procesosRegistrados) {
@@ -356,14 +355,13 @@ public class GestorProcesos {
                     if (siguiente == null || bcp.getLlegada() < siguiente.getBCP().getLlegada()) {
                         siguiente = proceso;
                     }
-                }
+                }  
             }
             if (siguiente == null) {
                 break;
             }
             colaTrabajos.add(siguiente);
         }
-        return cargarPendientesEnMemoria();
     }
 
     /**
@@ -391,11 +389,11 @@ public class GestorProcesos {
     }
 
     /**
-     * Carga los trabajos pendientes en RAM.
+     * Carga en RAM los trabajos de la cola que caben, desde el primero.
      *
      * @return true si algún proceso pasó a LISTO.
      */
-    private boolean cargarPendientesEnMemoria() {
+    private boolean admitirEnMemoria() {
         boolean admitio = false;
         while (!colaTrabajos.isEmpty()) {
             Proceso proceso = colaTrabajos.peek();
@@ -600,7 +598,7 @@ public class GestorProcesos {
         proceso.liberarPosicionBCP();
         bcp.setDireccionSiguienteBCP(-1);
         actualizarEnlacesBCP();
-        cargarPendientesEnMemoria();
+        admitirEnMemoria();
     }
 
     /**
