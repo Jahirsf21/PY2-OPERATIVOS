@@ -19,6 +19,15 @@ public class CPU {
     private int ah;
     private int al;
     private boolean flag;
+    private int pila1;
+    private int pila2;
+    private int pila3;
+    private int pila4;
+    private int pila5;
+    private int punteroPila;
+    private int inicioMemoria;
+    private int finMemoria;
+    private String interrupcion;
 
     /**
      * Construye una CPU e inicializa sus registros.
@@ -55,6 +64,36 @@ public class CPU {
     }
 
     /**
+     * Carga la pila del contexto.
+     *
+     * @param pila1 valor de la posición 1.
+     * @param pila2 valor de la posición 2.
+     * @param pila3 valor de la posición 3.
+     * @param pila4 valor de la posición 4.
+     * @param pila5 valor de la posición 5.
+     * @param punteroPila posición del tope, o -1 si está vacía.
+     */
+    public void cargarPila(int pila1, int pila2, int pila3, int pila4, int pila5, int punteroPila) {
+        this.pila1 = pila1;
+        this.pila2 = pila2;
+        this.pila3 = pila3;
+        this.pila4 = pila4;
+        this.pila5 = pila5;
+        this.punteroPila = punteroPila;
+    }
+
+    /**
+     * Carga los límites del programa en ejecución.
+     *
+     * @param inicio primera posición del programa.
+     * @param fin última posición del programa.
+     */
+    public void cargarLimites(int inicio, int fin) {
+        this.inicioMemoria = inicio;
+        this.finMemoria = fin;
+    }
+
+    /**
      * Carga en el IR la instrucción que se va a ejecutar.
      *
      * @param instruccion arreglo con el operador y sus operandos.
@@ -73,6 +112,8 @@ public class CPU {
      */
     public void ejecutarInstruccion(String[] instruccion) {
         cargarInstruccion(instruccion);
+        interrupcion = null;
+        int siguientePc = pc + 1;
         String operador = ir[0];
         switch (operador) {
             case "MOV":
@@ -113,9 +154,152 @@ public class CPU {
             case "CMP":
                 flag = leerRegistro(ir[1]) == leerRegistro(ir[2]);
                 break;
+            case "JMP":
+                siguientePc = calcularDestinoSalto(Integer.parseInt(ir[1]));
+                break;
+            case "JE":
+                if (flag) {
+                    siguientePc = calcularDestinoSalto(Integer.parseInt(ir[1]));
+                }
+                break;
+            case "JNE":
+                if (!flag) {
+                    siguientePc = calcularDestinoSalto(Integer.parseInt(ir[1]));
+                }
+                break;
+            case "PARAM":
+                int cantidad = ir.length - 1;
+                if (punteroPila + 1 + cantidad > 5) {
+                    throw new IllegalStateException("Desbordamiento de pila: no hay espacio para los " + cantidad + " parámetros. Capacidad máxima de 5 valores.");
+                }
+                for (int i = 1; i < ir.length; i++) {
+                    apilar(Integer.parseInt(ir[i]));
+                }
+                break;
+            case "PUSH":
+                apilar(leerRegistro(ir[1]));
+                break;
+            case "POP":
+                escribirRegistro(ir[1], desapilar());
+                break;
+            case "INT":
+                interrupcion = ir[1];
+                break;
             default:
                 throw new IllegalArgumentException("La instrucción " + operador + " todavía no está implementada en la CPU.");
         }
+        pc = siguientePc;
+    }
+
+    /**
+     * Calcula la dirección de un salto dentro del programa.
+     *
+     * @param desplazamiento desplazamiento desde PC.
+     * @return destino del salto.
+     */
+    private int calcularDestinoSalto(int desplazamiento) {
+        int destino = pc + desplazamiento;
+        if (destino < inicioMemoria || destino > finMemoria) {
+            throw new IllegalStateException("Salto fuera de los límites del programa: dirección " + destino + ". Rango permitido: " + inicioMemoria + " a " + finMemoria + ".");
+        }
+        return destino;
+    }
+
+    /**
+     * Guarda un valor en el tope de la pila.
+     *
+     * @param valor valor que se desea apilar.
+     */
+    private void apilar(int valor) {
+        if (punteroPila >= 4) {
+            throw new IllegalStateException("Desbordamiento de pila: capacidad máxima de 5 valores.");
+        }
+        punteroPila++;
+        setValorPila(punteroPila, valor);
+    }
+
+    /**
+     * Retira el valor del tope de la pila.
+     *
+     * @return valor retirado.
+     */
+    private int desapilar() {
+        if (punteroPila < 0) {
+            throw new IllegalStateException("La pila está vacía.");
+        }
+        int valor = getValorPila(punteroPila);
+        setValorPila(punteroPila, 0);
+        punteroPila--;
+        return valor;
+    }
+
+    /**
+     * Obtiene el valor de una posición de la pila.
+     *
+     * @param posicion índice de la posición, de 0 a 4.
+     * @return valor almacenado en esa posición.
+     */
+    public int getValorPila(int posicion) {
+        switch (posicion) {
+            case 0:
+                return pila1;
+            case 1:
+                return pila2;
+            case 2:
+                return pila3;
+            case 3:
+                return pila4;
+            case 4:
+                return pila5;
+            default:
+                throw new IllegalArgumentException("Posición de pila inválida: " + posicion);
+        }
+    }
+
+    /**
+     * Actualiza una posición de la pila.
+     *
+     * @param posicion índice de la posición, de 0 a 4.
+     * @param valor valor que se desea almacenar.
+     */
+    private void setValorPila(int posicion, int valor) {
+        switch (posicion) {
+            case 0:
+                pila1 = valor;
+                break;
+            case 1:
+                pila2 = valor;
+                break;
+            case 2:
+                pila3 = valor;
+                break;
+            case 3:
+                pila4 = valor;
+                break;
+            case 4:
+                pila5 = valor;
+                break;
+            default:
+                throw new IllegalArgumentException("Posición de pila inválida: " + posicion);
+        }
+    }
+
+    /**
+     * Obtiene la posición del tope de la pila.
+     *
+     * @return posición del tope, o -1 si la pila está vacía.
+     */
+    public int getPunteroPila() {
+        return punteroPila;
+    }
+
+    /**
+     * Obtiene la interrupción generada por la última instrucción.
+     *
+     * @return código de la interrupción, o null.
+     */
+    public String getInterrupcion() {
+        return interrupcion;
     }
 
     /**
@@ -257,6 +441,15 @@ public class CPU {
         ah = 0;
         al = 0;
         flag = false;
+        pila1 = 0;
+        pila2 = 0;
+        pila3 = 0;
+        pila4 = 0;
+        pila5 = 0;
+        punteroPila = -1;
+        inicioMemoria = 0;
+        finMemoria = 0;
+        interrupcion = null;
     }
 
     /**

@@ -493,62 +493,36 @@ public class GestorProcesos {
      * @return salida de pantalla, o null.
      */
     private String ejecutarInstruccion(String[] instruccion) {
-        BCP bcp = getActual().getBCP();
         CPU cpu = getCPU();
-        int siguientePc = cpu.getPc() + 1;
+        cpu.ejecutarInstruccion(instruccion);
         String salida = null;
-        switch (instruccion[0]) {
-            case "JMP":
-                siguientePc = calcularDestinoSalto(Integer.parseInt(instruccion[1]));
+        if (cpu.getInterrupcion() != null) {
+            salida = atenderInterrupcion(cpu.getInterrupcion());
+        }
+        return salida;
+    }
+
+    /**
+     * Atiende la interrupción generada por la CPU.
+     *
+     * @param codigo código de la interrupción.
+     * @return salida de pantalla, o null.
+     */
+    private String atenderInterrupcion(String codigo) {
+        String salida = null;
+        switch (codigo) {
+            case "20H":
+                getActual().getBCP().setEstadoTerminado(reloj);
                 break;
-            case "JE":
-                if (cpu.esIgual()) {
-                    siguientePc = calcularDestinoSalto(Integer.parseInt(instruccion[1]));
-                }
+            case "10H":
+                salida = getCPU().getDx();
                 break;
-            case "JNE":
-                if (!cpu.esIgual()) {
-                    siguientePc = calcularDestinoSalto(Integer.parseInt(instruccion[1]));
-                }
-                break;
-            case "PARAM":
-                int[] valores = new int[instruccion.length - 1];
-                for (int i = 0; i < valores.length; i++) {
-                    valores[i] = Integer.parseInt(instruccion[i + 1]);
-                }
-                if (bcp.getCantidadEnPila() + valores.length > bcp.getCapacidadPila()) {
-                    throw new IllegalStateException("Desbordamiento de pila: no hay espacio para los " + valores.length + " parámetros. Capacidad máxima de 5 valores.");
-                }
-                for (int valor : valores) {
-                    bcp.apilar(valor);
-                }
-                break;
-            case "PUSH":
-                bcp.apilar(cpu.leerRegistro(instruccion[1]));
-                break;
-            case "POP":
-                cpu.escribirRegistro(instruccion[1], bcp.desapilar());
-                break;
-            case "INT":
-                switch (instruccion[1]) {
-                    case "20H":
-                        bcp.setEstadoTerminado(reloj);
-                        break;
-                    case "10H":
-                        salida = cpu.getDx();
-                        break;
-                    case "21H":
-                        ejecutarServicioArchivo();
-                        break;
-                    default:
-                        throw new IllegalArgumentException("La interrupción INT " + instruccion[1] + " todavía no está implementada.");
-                }
+            case "21H":
+                ejecutarServicioArchivo();
                 break;
             default:
-                cpu.ejecutarInstruccion(instruccion);
-                break;
+                throw new IllegalArgumentException("La interrupción INT " + codigo + " todavía no está implementada.");
         }
-        cpu.setPc(siguientePc);
         return salida;
     }
 
@@ -577,21 +551,6 @@ public class GestorProcesos {
             default:
                 throw new IllegalArgumentException("AH no selecciona un servicio de archivos válido: " + cpu.getAh() + ".");
         }
-    }
-
-    /**
-     * Calcula la dirección de un salto.
-     *
-     * @param desplazamiento desplazamiento desde PC.
-     * @return destino dentro del programa.
-     */
-    private int calcularDestinoSalto(int desplazamiento) {
-        BCP bcp = getActual().getBCP();
-        int destino = getCPU().getPc() + desplazamiento;
-        if (destino < bcp.getInicioMemoria() || destino > bcp.getFinMemoria()) {
-            throw new IllegalStateException("Salto fuera de los límites del programa: dirección " + destino + ". Rango permitido: " + bcp.getInicioMemoria() + " a " + bcp.getFinMemoria() + ".");
-        }
-        return destino;
     }
 
     /**
