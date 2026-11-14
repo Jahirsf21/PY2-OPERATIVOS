@@ -8,7 +8,8 @@ import java.util.Random;
  * Mantiene los procesos listos y elige el siguiente según el algoritmo
  * configurado.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Planificador {
     private List<Proceso> colaListos;
@@ -44,7 +45,7 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo);
         return disponible;
     }
 
@@ -127,6 +128,8 @@ public class Planificador {
                 return 0;
             case "Lottery":
                 return Lottery();
+            case "GuaranteedScheduling":
+                return GuaranteedScheduling(instante);
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -179,27 +182,27 @@ public class Planificador {
     }
 
     /**
-     * Calcula la razon de respuesta (espera + rafaga) / rafaga.
+     * Calcula la razon de respuesta (transcurrido + rafaga) / rafaga.
      * @param proceso BCP del proceso listo.
      * @param instante segundo actual del reloj simulado.
      * @return razon de respuesta del proceso.
      */
-    private double razonRespuesta(BCP proceso, int instante) {
-        int espera = instante - proceso.getLlegada();
-        double razon = (double) (espera + proceso.getRafaga()) / proceso.getRafaga();
+    private double calcularRazonHRRN(BCP proceso, int instante) {
+        int transcurrido = instante - proceso.getLlegada();
+        double razon = (double) (transcurrido + proceso.getRafaga()) / proceso.getRafaga();
         return razon;
     }
 
     /**
-     * Compara dos procesos por mayos razon de respuesta, empata por menor llegada y luego por menor ID.
+     * Compara dos procesos por mayor razon de respuesta, empata por menor llegada y luego por menor ID.
      * @param a proceso candidato.
      * @param b proceso elegido hasta el momento.
      * @param instante segundo actual del reloj simulado.
      * @return true si a debe ir antes que b.
      */
-    private boolean tienePrioridad(BCP a, BCP b, int instante) {
-        double razonA = razonRespuesta(a, instante);
-        double razonB = razonRespuesta(b, instante);
+    private boolean tienePrioridadHRRN(BCP a, BCP b, int instante) {
+        double razonA = calcularRazonHRRN(a, instante);
+        double razonB = calcularRazonHRRN(b, instante);
 
         if (razonA > razonB) {
             return true;
@@ -230,7 +233,75 @@ public class Planificador {
         for (int i = 1; i < colaListos.size(); i++) {
             BCP candidato = colaListos.get(i).getBCP();
             BCP actual = colaListos.get(elegido).getBCP();
-            if (tienePrioridad(candidato, actual, instante)) {
+            if (tienePrioridadHRRN(candidato, actual, instante)) {
+                elegido = i;
+            }
+        }
+        return elegido;
+    }
+
+    /**
+     * Calcula la razón entre la CPU usada y la que le corresponde a un proceso
+     *
+     * @param proceso BCP del proceso.
+     * @param instante segundo actual del reloj simulado.
+     * @param participantes procesos que comparten la CPU.
+     * @return razón del proceso, o 0 si acaba de llegar.
+     */
+    public double calcularRazonGS(BCP proceso, int instante, int participantes) {
+        int transcurrido = instante - proceso.getLlegada();
+        if (transcurrido == 0) {
+            return 0;
+        }
+        double razon = (double) (proceso.getTiempoEmpleadoSegundos() * participantes) / transcurrido;
+        return razon;
+    }
+
+    /**
+     * Compara dos procesos por menor razón de uso; empata por menor llegada y luego por menor ID.
+     *
+     * @param a proceso candidato.
+     * @param b proceso elegido hasta el momento.
+     * @param instante segundo actual del reloj simulado.
+     * @param participantes procesos que comparten la CPU.
+     * @return true si a debe ir antes que b.
+     */
+    private boolean tienePrioridadGS(BCP a, BCP b, int instante, int participantes) {
+        double razonA = calcularRazonGS(a, instante, participantes);
+        double razonB = calcularRazonGS(b, instante, participantes);
+
+        if (razonA < razonB) {
+            return true;
+        }
+        if (razonA > razonB) {
+            return false;
+        }
+        if (a.getLlegada() < b.getLlegada()) {
+            return true;
+        }
+        if (a.getLlegada() > b.getLlegada()) {
+            return false;
+        }
+
+        if (a.getIdProceso() < b.getIdProceso()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Busca la menor razón de uso; empata por menor llegada y luego por menor ID.
+     *
+     * @param instante segundo actual del reloj simulado.
+     * @return posición del proceso elegido.
+     */
+    private int GuaranteedScheduling(int instante) {
+        int participantes = colaListos.size();
+        int elegido = 0;
+        for (int i = 1; i < colaListos.size(); i++) {
+            BCP candidato = colaListos.get(i).getBCP();
+            BCP actual = colaListos.get(elegido).getBCP();
+            if (tienePrioridadGS(candidato, actual, instante, participantes)) {
                 elegido = i;
             }
         }
@@ -296,17 +367,28 @@ public class Planificador {
     /**
      * Indica si el proceso actual debe dejar la CPU.
      * SRT expropia: cuando algún listo tiene un restante estrictamente menor que el del actual.
+     * GuaranteedScheduling expropia: cuando algún listo tiene una razón de uso estrictamente menor que la del actual.
      * El empate no expropia.
      *
      * @param actual proceso que tiene la CPU.
+     * @param instante segundo actual del reloj simulado.
      * @return true si debe expropiarse.
      */
-    public boolean debeExpropiar(Proceso actual) {
+    public boolean debeExpropiar(Proceso actual, int instante) {
         boolean expropiar = false;
         if ("SRT".equals(algoritmo) && actual != null) {
             int restanteActual = actual.getBCP().getRestante();
             for (Proceso listo : colaListos) {
                 if (listo.getBCP().getRestante() < restanteActual) {
+                    expropiar = true;
+                }
+            }
+        }
+        if ("GuaranteedScheduling".equals(algoritmo) && actual != null) {
+            int participantes = colaListos.size() + 1;
+            double razonActual = calcularRazonGS(actual.getBCP(), instante, participantes);
+            for (Proceso listo : colaListos) {
+                if (calcularRazonGS(listo.getBCP(), instante, participantes) < razonActual) {
                     expropiar = true;
                 }
             }

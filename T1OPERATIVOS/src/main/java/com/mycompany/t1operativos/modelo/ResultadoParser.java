@@ -6,7 +6,8 @@ package com.mycompany.t1operativos.modelo;
  * Contiene el estado de validación y, según el resultado, la instrucción
  * procesada o el mensaje que describe el error encontrado.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class ResultadoParser {
     private boolean valido;

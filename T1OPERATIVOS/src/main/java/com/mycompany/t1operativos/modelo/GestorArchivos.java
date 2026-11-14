@@ -5,7 +5,8 @@ import java.util.List;
 /**
  * Gestiona programas y archivos numéricos en disco.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class GestorArchivos {
     private Disco disco;

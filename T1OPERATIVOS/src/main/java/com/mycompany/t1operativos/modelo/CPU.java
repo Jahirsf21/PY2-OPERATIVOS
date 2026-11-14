@@ -6,7 +6,8 @@ package com.mycompany.t1operativos.modelo;
  * Mantiene los registros y ejecuta la instrucción que recibe. La lectura de
  * instrucciones desde memoria corresponde al gestor de procesos.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class CPU {
     private int pc;

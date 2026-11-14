@@ -10,7 +10,8 @@ import java.util.List;
  * Carga archivos ensamblador con extensión {@code .asm} y convierte cada línea
  * en una instrucción validada mediante el {@link Parser}.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class CargadorArchivos {
     private Parser parser;

@@ -3,7 +3,8 @@ package com.mycompany.t1operativos.modelo;
 /**
  * Administra la CPU y los cambios de contexto.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Despachador {
     private CPU cpu;

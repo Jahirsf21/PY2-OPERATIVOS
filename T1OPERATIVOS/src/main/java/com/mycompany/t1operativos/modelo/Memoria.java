@@ -3,7 +3,8 @@ package com.mycompany.t1operativos.modelo;
 /**
  * Almacena instrucciones y atributos del BCP en sus respectivas zonas.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Memoria {
     private String[][] memoria;

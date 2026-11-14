@@ -9,7 +9,8 @@ import com.mycompany.t1operativos.vista.Aplicacion;
 /**
  * Inicia la interfaz gráfica de la Mini PC.
  *
- * @author deisl
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Main {
 

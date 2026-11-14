@@ -21,7 +21,8 @@ import java.util.List;
 /**
  * Ventana principal de Mini PC.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Aplicacion extends JFrame {
 
@@ -240,7 +241,7 @@ public class Aplicacion extends JFrame {
         EstiloUI.estilizarSpinner(selectorMemoria);
         EstiloUI.estilizarSpinner(selectorDisco);
         EstiloUI.estilizarSpinner(selectorMemoriaVirtual);
-        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery"});
+        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery", "GuaranteedScheduling"});
         EstiloUI.estilizarCombo(selectorAlgoritmo);
         selectorAlgoritmo.setPreferredSize(new Dimension(130, 34));
         selectorQuantum = new JSpinner(new SpinnerNumberModel(1, 1, null, 1));
@@ -560,7 +561,7 @@ public class Aplicacion extends JFrame {
      * @return panel de procesos y estados.
      */
     private JPanel crearPanelProcesos() {
-        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante"}, 0) {
+        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante", "Razón"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;

@@ -6,7 +6,8 @@ import java.util.List;
 /**
  * Bloque de control de proceso.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class BCP {
     private int idProceso;

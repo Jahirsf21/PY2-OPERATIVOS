@@ -5,7 +5,8 @@ package com.mycompany.t1operativos.modelo;
  *
  * Reconoce las instrucciones del proyecto y los registros AX, BX, CX, DX, AH y AL.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Parser {
 

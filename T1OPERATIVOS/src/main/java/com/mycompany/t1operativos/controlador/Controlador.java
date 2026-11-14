@@ -18,7 +18,8 @@ import javax.swing.table.DefaultTableModel;
 /**
  * Conecta la vista con el gestor de procesos.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Controlador {
     private Aplicacion vista;
@@ -386,7 +387,11 @@ public class Controlador {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 if (proceso.getPosicionBCP() >= 0) {
                     BCP bcp = proceso.getBCP();
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante()});
+                    String razon = "";
+                    if ("GuaranteedScheduling".equals(gestor.getAlgoritmo())) {
+                        razon = String.format("%.2f", gestor.getRazon(proceso));
+                    }
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante(), razon});
                 }
             }
         }

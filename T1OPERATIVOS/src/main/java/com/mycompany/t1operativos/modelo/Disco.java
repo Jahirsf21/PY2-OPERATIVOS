@@ -3,7 +3,8 @@ package com.mycompany.t1operativos.modelo;
 /**
  * Almacena archivos en el disco.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Disco {
     private String[][] disco;

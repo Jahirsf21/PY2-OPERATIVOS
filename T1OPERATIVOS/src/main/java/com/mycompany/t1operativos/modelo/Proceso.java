@@ -3,7 +3,8 @@ package com.mycompany.t1operativos.modelo;
 /**
  * Reúne el contexto y las ubicaciones de un proceso.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class Proceso {
     private BCP bcp;

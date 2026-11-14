@@ -10,7 +10,8 @@ import java.util.Queue;
 /**
  * Coordina los procesos de la Mini PC.
  *
- * @author deislher sánchez funez
+ * @author Deislher Sánchez Funez
+ * @author Natalia Granados Rosales
  */
 public class GestorProcesos {
     private Memoria memoria;
@@ -97,7 +98,7 @@ public class GestorProcesos {
         if (admitirEnMemoria()) {
             cambio = true;
         }
-        if (agotado || planificador.debeExpropiar(getActual())) {
+        if (agotado || planificador.debeExpropiar(getActual(), reloj)) {
             expropiarActual();
             cambio = true;
         }
@@ -249,6 +250,20 @@ public class GestorProcesos {
      */
     public String getUltimoSorteo() {
         return planificador.getUltimoSorteo();
+    }
+
+    /**
+     * Obtiene la razón de uso de un proceso en el reloj actual.
+     *
+     * @param proceso proceso cargado en RAM.
+     * @return servicio / ((reloj − llegada) / n), o 0 si acaba de llegar.
+     */
+    public double getRazon(Proceso proceso) {
+        int participantes = planificador.getListos().size();
+        if (getActual() != null) {
+            participantes++;
+        }
+        return planificador.calcularRazonGS(proceso.getBCP(), reloj, participantes);
     }
 
     /**
