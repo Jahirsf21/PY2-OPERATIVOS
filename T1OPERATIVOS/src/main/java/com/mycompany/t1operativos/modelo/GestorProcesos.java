@@ -24,6 +24,7 @@ public class GestorProcesos {
     private int reloj;
     private int segundosOcio;
     private boolean corridaIniciada;
+    private int segundosTurno;
 
     /**
      * Construye los recursos de la simulación.
@@ -32,9 +33,10 @@ public class GestorProcesos {
      * @param tamañoDisco posiciones de disco.
      * @param tamañoMemoriaVirtual posiciones reservadas en disco.
      * @param algoritmo algoritmo de planificación.
+     * @param quantum segundos por turno en RR.
      */
-    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo) {
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo);
+    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum) {
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum);
     }
 
     /**
@@ -84,9 +86,18 @@ public class GestorProcesos {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
         corridaIniciada = true;
+        boolean cambio = false;
+        boolean agotado = getActual() != null && planificador.agotoQuantum(segundosTurno);
+        if (agotado && planificador.hayProcesosListos()) {
+            expropiarActual();
+            cambio = true;
+            agotado = false;
+        }
         admitirLlegadas();
-        boolean cambio = admitirEnMemoria();
-        if (planificador.debeExpropiar(getActual())) {
+        if (admitirEnMemoria()) {
+            cambio = true;
+        }
+        if (agotado || planificador.debeExpropiar(getActual())) {
             expropiarActual();
             cambio = true;
         }
@@ -101,6 +112,7 @@ public class GestorProcesos {
     public boolean despacharPaso() {
         if (getActual() == null && planificador.hayProcesosListos()) {
             despachador.despachar(planificador.obtenerSiguiente(reloj), reloj);
+            segundosTurno = 0;
             return true;
         }
         return false;
@@ -133,6 +145,7 @@ public class GestorProcesos {
             }
             cpu.cargarInstruccion(instruccion);
             bcp.aumentarTiempoEmpleado();
+            segundosTurno++;
             reloj++;
             String salida = ejecutarInstruccion(instruccion);
             bcp.guardarContexto(cpu);
@@ -154,7 +167,7 @@ public class GestorProcesos {
      * Reinicia la simulación conservando capacidades.
      */
     public void limpiar() {
-        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo());
+        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum());
     }
 
     /**
@@ -218,6 +231,15 @@ public class GestorProcesos {
      */
     public String getAlgoritmo() {
         return planificador.getAlgoritmo();
+    }
+
+    /**
+     * Obtiene el quantum de planificación.
+     *
+     * @return segundos por turno.
+     */
+    public int getQuantum() {
+        return planificador.getQuantum();
     }
 
     /**
@@ -608,8 +630,9 @@ public class GestorProcesos {
      * @param tamañoDisco posiciones de disco.
      * @param tamañoMemoriaVirtual posiciones reservadas en disco.
      * @param algoritmo algoritmo de planificación.
+     * @param quantum segundos por turno en RR.
      */
-    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo) {
+    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum) {
         if (tamañoMemoria < 128) {
             throw new IllegalArgumentException("La RAM debe ser al menos 128 posiciones.");
         }
@@ -621,7 +644,7 @@ public class GestorProcesos {
         Memoria nuevaMemoria = new Memoria(tamañoMemoria, tamañoKernel);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
-        Planificador nuevoPlanificador = new Planificador(algoritmo);
+        Planificador nuevoPlanificador = new Planificador(algoritmo, quantum);
         Despachador nuevoDespachador = new Despachador(new CPU());
         memoria = nuevaMemoria;
         disco = nuevoDisco;
@@ -634,5 +657,6 @@ public class GestorProcesos {
         reloj = 0;
         segundosOcio = 0;
         corridaIniciada = false;
+        segundosTurno = 0;
     }
 }

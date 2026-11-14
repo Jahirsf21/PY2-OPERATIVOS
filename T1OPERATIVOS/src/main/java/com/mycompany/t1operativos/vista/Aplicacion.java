@@ -85,6 +85,8 @@ public class Aplicacion extends JFrame {
     private JSpinner selectorMemoriaVirtual;
     /** Algoritmo de planificación elegido. */
     private JComboBox<String> selectorAlgoritmo;
+    /** Quantum elegido para RR. */
+    private JSpinner selectorQuantum;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
@@ -238,9 +240,12 @@ public class Aplicacion extends JFrame {
         EstiloUI.estilizarSpinner(selectorMemoria);
         EstiloUI.estilizarSpinner(selectorDisco);
         EstiloUI.estilizarSpinner(selectorMemoriaVirtual);
-        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT"});
+        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR"});
         EstiloUI.estilizarCombo(selectorAlgoritmo);
         selectorAlgoritmo.setPreferredSize(new Dimension(130, 34));
+        selectorQuantum = new JSpinner(new SpinnerNumberModel(1, 1, null, 1));
+        EstiloUI.estilizarSpinner(selectorQuantum);
+        selectorQuantum.setEnabled(false);
 
         lblDistribucionMemoria = new JLabel();
         lblDistribucionMemoria.setFont(EstiloUI.FUENTE_ETIQUETA);
@@ -270,6 +275,9 @@ public class Aplicacion extends JFrame {
         JPanel tarjetaPlanificacion = crearTarjetaConfiguracion("Planificación");
         tarjetaPlanificacion.add(crearFilaCampo("Algoritmo de planificación",
                 "Política para elegir el siguiente proceso.", selectorAlgoritmo));
+        tarjetaPlanificacion.add(Box.createVerticalStrut(10));
+        tarjetaPlanificacion.add(crearFilaCampo("Quantum",
+                "Segundos por turno en RR.", selectorQuantum));
 
         JPanel cuerpo = new JPanel(new GridBagLayout());
         cuerpo.setBackground(EstiloUI.FONDO);
@@ -297,6 +305,7 @@ public class Aplicacion extends JFrame {
             actualizarDistribucionDisco();
         });
         selectorMemoriaVirtual.addChangeListener(e -> actualizarDistribucionDisco());
+        selectorAlgoritmo.addActionListener(e -> selectorQuantum.setEnabled(selectorAlgoritmo.isEnabled() && "RR".equals(getAlgoritmoSeleccionado())));
         actualizarDistribucionMemoria();
         actualizarDistribucionDisco();
 
@@ -968,6 +977,7 @@ public class Aplicacion extends JFrame {
         selectorDisco.setEnabled(habilitado);
         selectorMemoriaVirtual.setEnabled(habilitado);
         selectorAlgoritmo.setEnabled(habilitado);
+        selectorQuantum.setEnabled(habilitado && "RR".equals(getAlgoritmoSeleccionado()));
     }
 
     /**
@@ -977,6 +987,20 @@ public class Aplicacion extends JFrame {
      */
     public String getAlgoritmoSeleccionado() {
         return (String) selectorAlgoritmo.getSelectedItem();
+    }
+
+    /**
+     * Confirma y obtiene el quantum elegido.
+     *
+     * @return segundos por turno.
+     */
+    public int getQuantumSeleccionado() {
+        try {
+            selectorQuantum.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("El quantum debe ser un entero mayor o igual a 1.");
+        }
+        return (Integer) selectorQuantum.getValue();
     }
 
     // ================================================================

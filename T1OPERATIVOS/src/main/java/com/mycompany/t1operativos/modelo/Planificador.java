@@ -12,18 +12,24 @@ import java.util.List;
 public class Planificador {
     private List<Proceso> colaListos;
     private String algoritmo;
+    private int quantum;
 
     /**
      * Construye una cola vacía de procesos listos para CPU.
      *
      * @param algoritmo nombre del algoritmo de planificación.
+     * @param quantum segundos por turno en RR.
      */
-    public Planificador(String algoritmo) {
+    public Planificador(String algoritmo, int quantum) {
         if (!esAlgoritmoDisponible(algoritmo)) {
             throw new IllegalArgumentException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
+        if (quantum < 1) {
+            throw new IllegalArgumentException("El quantum debe ser un entero mayor o igual a 1.");
+        }
         colaListos = new ArrayList<>();
         this.algoritmo = algoritmo;
+        this.quantum = quantum;
     }
 
     /**
@@ -33,7 +39,7 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo);
         return disponible;
     }
 
@@ -44,6 +50,15 @@ public class Planificador {
      */
     public String getAlgoritmo() {
         return algoritmo;
+    }
+
+    /**
+     * Obtiene el quantum configurado.
+     *
+     * @return segundos por turno.
+     */
+    public int getQuantum() {
+        return quantum;
     }
 
     /**
@@ -103,6 +118,8 @@ public class Planificador {
                 return HRRN(instante);
             case "SRT":
                 return SRT();
+            case "RR":
+                return 0;
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -237,8 +254,8 @@ public class Planificador {
     }
 
     /**
-     * Indica si el proceso actual debe dejar la CPU. Solo SRT expropia: cuando
-     * algún listo tiene un restante estrictamente menor que el del actual.
+     * Indica si el proceso actual debe dejar la CPU.
+     * SRT expropia: cuando algún listo tiene un restante estrictamente menor que el del actual.
      * El empate no expropia.
      *
      * @param actual proceso que tiene la CPU.
@@ -255,6 +272,18 @@ public class Planificador {
             }
         }
         return expropiar;
+    }
+
+    /**
+     * Indica si el proceso actual debe dejar la CPU por quantum.
+     * RR expropia cuando su turno alcanza el quantum configurado.
+     *
+     * @param segundosTurno segundos ejecutados desde su despacho.
+     * @return true si debe expropiarse.
+     */
+    public boolean agotoQuantum(int segundosTurno) {
+        boolean agotado = "RR".equals(algoritmo) && segundosTurno >= quantum;
+        return agotado;
     }
 
     /**

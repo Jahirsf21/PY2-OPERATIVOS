@@ -104,7 +104,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || destino.getProcesosRegistrados().isEmpty()) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -398,6 +398,9 @@ public class Controlador {
             reloj = gestor.getReloj();
             ocio = gestor.getSegundosOcio();
             algoritmo = gestor.getAlgoritmo();
+            if ("RR".equals(algoritmo)) {
+                algoritmo = algoritmo + " (q = " + gestor.getQuantum() + ")";
+            }
         }
         vista.mostrarReloj("Algoritmo: " + algoritmo + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
     }
