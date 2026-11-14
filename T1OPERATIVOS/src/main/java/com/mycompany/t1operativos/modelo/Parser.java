@@ -48,8 +48,7 @@ public class Parser {
      * @return un arreglo con el operador, un operando vacío y el valor {@code "0"}.
      */
     public String[] procesarInstruccionSinOperando(String[] instruccion) {
-        String[] resultado = new String[]{instruccion[0].trim(), "", "0"};
-        return resultado;
+        return new String[]{instruccion[0].trim(), "", "0"};
     }
 
     /**
@@ -77,23 +76,19 @@ public class Parser {
      */
     public String validarInstruccionSimple(String[] instruccion) {
         if (instruccion.length != 1) {
-            String mensaje = "Formato inválido: una instrucción simple debe tener el formato \"OPERADOR REGISTRO\".";
-            return mensaje;
+            return "Formato inválido: una instrucción simple debe tener el formato \"OPERADOR REGISTRO\".";
         }
         String[] partesOperacion = instruccion[0].replaceAll("\\s+", " ").split(" ");
         if (partesOperacion.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR REGISTRO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR REGISTRO\".";
         }
         String operador = partesOperacion[0];
         String registro = partesOperacion[1];
         if (!validarOperadorSimple(operador)) {
-            String mensaje = "Operador desconocido: \"" + operador + "\". Operadores válidos: LOAD, STORE, ADD, SUB.";
-            return mensaje;
+            return "Operador desconocido: \"" + operador + "\". Operadores válidos: LOAD, STORE, ADD, SUB.";
         }
         if (!validarRegistro(registro)) {
-            String mensaje = "Registro inválido: \"" + registro + "\". Registros válidos: AX, BX, CX, DX.";
-            return mensaje;
+            return "Registro inválido: \"" + registro + "\". Registros válidos: AX, BX, CX, DX.";
         }
         return null;
     }
@@ -106,23 +101,19 @@ public class Parser {
      */
     public String validarInstruccionAsignacion(String[] instruccion) {
         if (instruccion.length != 2) {
-            String mensaje = "Formato inválido: una instrucción de asignación debe tener el formato \"OPERADOR REGISTRO, VALOR\".";
-            return mensaje;
+            return "Formato inválido: una instrucción de asignación debe tener el formato \"OPERADOR REGISTRO, VALOR\".";
         }
         String[] partesOperacion = instruccion[0].replaceAll("\\s+", " ").split(" ");
         if (partesOperacion.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR REGISTRO, VALOR\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR REGISTRO, VALOR\".";
         }
         String operador = partesOperacion[0];
         String registro = partesOperacion[1];
         if (!operador.equals("MOV")) {
             if (validarOperadorSimple(operador)) {
-                String mensaje = "El operador \"" + operador + "\" no admite valor.";
-                return mensaje;
+                return "El operador \"" + operador + "\" no admite valor.";
             } else {
-                String mensaje = "Operador desconocido: \"" + operador + "\". Operador válido: MOV.";
-                return mensaje;
+                return "Operador desconocido: \"" + operador + "\". Operador válido: MOV.";
             }
         }
         String valorTexto = instruccion[1].trim();
@@ -142,16 +133,14 @@ public class Parser {
             return null;
         }
         if (!validarRegistro(registro) && !"AL".equals(registro)) {
-            String mensaje = "Registro inválido: \"" + registro + "\". Registros válidos: AX, BX, CX, DX, AH, AL.";
-            return mensaje;
+            return "Registro inválido: \"" + registro + "\". Registros válidos: AX, BX, CX, DX, AH, AL.";
         }
         if ("DX".equals(registro)) {
             if ("AL".equals(valorTexto)) {
                 return null;
             }
             if (valorTexto.contains("\"")) {
-                String mensaje = validarAsignacionTexto(valorTexto);
-                return mensaje;
+                return validarAsignacionTexto(valorTexto);
             }
         }
         if (validarRegistro(valorTexto)) {
@@ -162,18 +151,15 @@ public class Parser {
             valor = Integer.parseInt(valorTexto);
         } catch (NumberFormatException e) {
             if ("DX".equals(registro)) {
-                String mensaje = "El origen \"" + valorTexto + "\" debe ser un registro (AX, BX, CX, DX, AL), un entero o texto entre comillas dobles.";
-                return mensaje;
+                return "El origen \"" + valorTexto + "\" debe ser un registro (AX, BX, CX, DX, AL), un entero o texto entre comillas dobles.";
             }
             if ("AL".equals(registro)) {
                 return "AL debe recibir un registro (AX, BX, CX, DX, AL) o un número entero válido.";
             }
-            String mensaje = "El origen \"" + valorTexto + "\" debe ser un registro (AX, BX, CX, DX) o un número entero válido.";
-            return mensaje;
+            return "El origen \"" + valorTexto + "\" debe ser un registro (AX, BX, CX, DX) o un número entero válido.";
         }
         if (valor < -127 || valor > 127) {
-            String mensaje = "El valor " + valor + " está fuera del rango permitido (-127 a 127).";
-            return mensaje;
+            return "El valor " + valor + " está fuera del rango permitido (-127 a 127).";
         }
         return null;
     }
@@ -206,12 +192,10 @@ public class Parser {
         }
         String[] partes = instruccion[0].trim().replaceAll("\\s+", " ").split(" ");
         if (partes.length > 2) {
-            String mensaje = "Formato inválido: se esperaba \"INC [REGISTRO]\" o \"DEC [REGISTRO]\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"INC [REGISTRO]\" o \"DEC [REGISTRO]\".";
         }
         if (partes.length == 2 && !validarRegistro(partes[1])) {
-            String mensaje = "Registro inválido: \"" + partes[1] + "\". Registros válidos: AX, BX, CX, DX.";
-            return mensaje;
+            return "Registro inválido: \"" + partes[1] + "\". Registros válidos: AX, BX, CX, DX.";
         }
         return null;
     }
@@ -224,22 +208,18 @@ public class Parser {
      */
     public String validarInstruccionDosRegistros(String[] instruccion) {
         if (instruccion.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR REGISTRO1, REGISTRO2\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR REGISTRO1, REGISTRO2\".";
         }
         String[] partes = instruccion[0].trim().replaceAll("\\s+", " ").split(" ");
         if (partes.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR REGISTRO1, REGISTRO2\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR REGISTRO1, REGISTRO2\".";
         }
         if (!validarRegistro(partes[1])) {
-            String mensaje = "Registro inválido: \"" + partes[1] + "\". Registros válidos: AX, BX, CX, DX.";
-            return mensaje;
+            return "Registro inválido: \"" + partes[1] + "\". Registros válidos: AX, BX, CX, DX.";
         }
         String segundo = instruccion[1].trim();
         if (!validarRegistro(segundo)) {
-            String mensaje = "Registro inválido: \"" + segundo + "\". Registros válidos: AX, BX, CX, DX.";
-            return mensaje;
+            return "Registro inválido: \"" + segundo + "\". Registros válidos: AX, BX, CX, DX.";
         }
         return null;
     }
@@ -252,17 +232,14 @@ public class Parser {
      */
     public String validarInstruccionInterrupcion(String[] instruccion) {
         if (instruccion.length != 1) {
-            String mensaje = "Formato inválido: se esperaba \"INT CÓDIGO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"INT CÓDIGO\".";
         }
         String[] partes = instruccion[0].trim().replaceAll("\\s+", " ").split(" ");
         if (partes.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"INT CÓDIGO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"INT CÓDIGO\".";
         }
         if (!validarInterrupcion(partes[1])) {
-            String mensaje = "Interrupción inválida: \"" + partes[1] + "\". Válidas: 10H, 20H, 21H.";
-            return mensaje;
+            return "Interrupción inválida: \"" + partes[1] + "\". Válidas: 10H, 20H, 21H.";
         }
         return null;
     }
@@ -275,19 +252,16 @@ public class Parser {
      */
     public String validarInstruccionSalto(String[] instruccion) {
         if (instruccion.length != 1) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR DESPLAZAMIENTO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR DESPLAZAMIENTO\".";
         }
         String[] partes = instruccion[0].trim().replaceAll("\\s+", " ").split(" ");
         if (partes.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR DESPLAZAMIENTO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR DESPLAZAMIENTO\".";
         }
         try {
             Integer.parseInt(partes[1]);
         } catch (NumberFormatException e) {
-            String mensaje = "Desplazamiento inválido: \"" + partes[1] + "\". Se esperaba un número entero.";
-            return mensaje;
+            return "Desplazamiento inválido: \"" + partes[1] + "\". Se esperaba un número entero.";
         }
         return null;
     }
@@ -304,22 +278,19 @@ public class Parser {
         }
         String[] partes = instruccion[0].trim().replaceAll("\\s+", " ").split(" ");
         if (partes.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"PARAM 1\", \"PARAM 1, 2\" o \"PARAM 1, 2, 3\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"PARAM 1\", \"PARAM 1, 2\" o \"PARAM 1, 2, 3\".";
         }
         try {
             Integer.parseInt(partes[1]);
         } catch (NumberFormatException e) {
-            String mensaje = "Parámetro inválido: \"" + partes[1] + "\". Se esperaba un número entero.";
-            return mensaje;
+            return "Parámetro inválido: \"" + partes[1] + "\". Se esperaba un número entero.";
         }
         for (int i = 1; i < instruccion.length; i++) {
             String valor = instruccion[i].trim();
             try {
                 Integer.parseInt(valor);
             } catch (NumberFormatException e) {
-                String mensaje = "Parámetro inválido: \"" + valor + "\". Se esperaba un número entero.";
-                return mensaje;
+                return "Parámetro inválido: \"" + valor + "\". Se esperaba un número entero.";
             }
         }
         return null;
@@ -333,17 +304,14 @@ public class Parser {
      */
     public String validarInstruccionPila(String[] instruccion) {
         if (instruccion.length != 1) {
-            String mensaje = "Formato inválido: se esperaba \"PUSH REGISTRO\" o \"POP REGISTRO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"PUSH REGISTRO\" o \"POP REGISTRO\".";
         }
         String[] partes = instruccion[0].trim().replaceAll("\\s+", " ").split(" ");
         if (partes.length != 2) {
-            String mensaje = "Formato inválido: se esperaba \"OPERADOR REGISTRO\".";
-            return mensaje;
+            return "Formato inválido: se esperaba \"OPERADOR REGISTRO\".";
         }
         if (!validarRegistro(partes[1])) {
-            String mensaje = "Registro inválido: \"" + partes[1] + "\". Registros válidos: AX, BX, CX, DX.";
-            return mensaje;
+            return "Registro inválido: \"" + partes[1] + "\". Registros válidos: AX, BX, CX, DX.";
         }
         return null;
     }
@@ -443,84 +411,67 @@ public class Parser {
         String operador = partesOperacion[0];
 
         if (!validarOperador(operador)) {
-            ResultadoParser resultado = new ResultadoParser(false, null, "Operador desconocido: \"" + operador + "\".");
-            return resultado;
+            return new ResultadoParser(false, null, "Operador desconocido: \"" + operador + "\".");
         }
         if (!"MOV".equals(operador)) {
             partes = instruccion.trim().split(",", -1);
         }
         String error;
-        ResultadoParser resultado;
         switch (operador) {
             case "MOV":
                 error = validarInstruccionAsignacion(partes);
                 if (error == null) {
-                    resultado = new ResultadoParser(true, procesarInstruccionAsignacion(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionAsignacion(partes), null);
                 }
-                resultado = new ResultadoParser(false, null, error);
-                return resultado;
+                return new ResultadoParser(false, null, error);
             case "INC":
             case "DEC":
                 error = validarInstruccionIncremento(partes);
                 if (error == null) {
                     if (partesOperacion.length == 1) {
-                        resultado = new ResultadoParser(true, procesarInstruccionSinOperando(partes), null);
-                        return resultado;
+                        return new ResultadoParser(true, procesarInstruccionSinOperando(partes), null);
                     }
-                    resultado = new ResultadoParser(true, procesarInstruccionSimple(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionSimple(partes), null);
                 }
-                resultado = new ResultadoParser(false, null, error);
-                return resultado;
+                return new ResultadoParser(false, null, error);
             case "SWAP":
             case "CMP":
                 error = validarInstruccionDosRegistros(partes);
                 if (error == null) {
-                    resultado = new ResultadoParser(true, procesarInstruccionAsignacion(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionAsignacion(partes), null);
                 } else {
-                    resultado = new ResultadoParser(false, null, error);
-                    return resultado;
+                    return new ResultadoParser(false, null, error);
                 }
             case "INT":
                 error = validarInstruccionInterrupcion(partes);
                 if (error == null) {
-                    resultado = new ResultadoParser(true, procesarInstruccionSimple(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionSimple(partes), null);
                 } else {
-                    resultado = new ResultadoParser(false, null, error);
-                    return resultado;
+                    return new ResultadoParser(false, null, error);
                 }
             case "JMP":
             case "JE":
             case "JNE":
                 error = validarInstruccionSalto(partes);
                 if (error == null) {
-                    resultado = new ResultadoParser(true, procesarInstruccionSimple(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionSimple(partes), null);
                 } else {
-                    resultado = new ResultadoParser(false, null, error);
-                    return resultado;
+                    return new ResultadoParser(false, null, error);
                 }
             case "PARAM":
                 error = validarInstruccionParametros(partes);
                 if (error == null) {
-                    resultado = new ResultadoParser(true, procesarInstruccionParametros(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionParametros(partes), null);
                 } else {
-                    resultado = new ResultadoParser(false, null, error);
-                    return resultado;
+                    return new ResultadoParser(false, null, error);
                 }
             case "PUSH":
             case "POP":
                 error = validarInstruccionPila(partes);
                 if (error == null) {
-                    resultado = new ResultadoParser(true, procesarInstruccionSimple(partes), null);
-                    return resultado;
+                    return new ResultadoParser(true, procesarInstruccionSimple(partes), null);
                 } else {
-                    resultado = new ResultadoParser(false, null, error);
-                    return resultado;
+                    return new ResultadoParser(false, null, error);
                 }
             default:
                 break;
@@ -528,23 +479,18 @@ public class Parser {
         if (partes.length == 1) {
             error = validarInstruccionSimple(partes);
             if (error == null) {
-                resultado = new ResultadoParser(true, procesarInstruccionSimple(partes), null);
-                return resultado;
+                return new ResultadoParser(true, procesarInstruccionSimple(partes), null);
             }
-            resultado = new ResultadoParser(false, null, error);
-            return resultado;
+            return new ResultadoParser(false, null, error);
         }
         if (partes.length == 2) {
             error = validarInstruccionAsignacion(partes);
             if (error == null) {
-                resultado = new ResultadoParser(true, procesarInstruccionAsignacion(partes), null);
-                return resultado;
+                return new ResultadoParser(true, procesarInstruccionAsignacion(partes), null);
             }
-            resultado = new ResultadoParser(false, null, error);
-            return resultado;
+            return new ResultadoParser(false, null, error);
         }
-        resultado = new ResultadoParser(false, null, "Formato inválido: se esperaba \"OPERADOR REGISTRO\" o \"OPERADOR REGISTRO, VALOR\".");
-        return resultado;
+        return new ResultadoParser(false, null, "Formato inválido: se esperaba \"OPERADOR REGISTRO\" o \"OPERADOR REGISTRO, VALOR\".");
     }
 
     /**
@@ -564,8 +510,7 @@ public class Parser {
         }
         if ("MOV".equals(operador) || "SWAP".equals(operador) || "CMP".equals(operador)) {
             String valor = instruccion[2];
-            String texto = operador + " " + registro + ", " + valor;
-            return texto;
+            return operador + " " + registro + ", " + valor;
         }
         if ("PARAM".equals(operador)) {
             String resultado = operador + " " + registro;
@@ -574,7 +519,6 @@ public class Parser {
             }
             return resultado;
         }
-        String texto = operador + " " + registro;
-        return texto;
+        return operador + " " + registro;
     }
 }

@@ -82,8 +82,7 @@ public class Planificador {
         if (!"LISTO".equals(bcp.getEstado())) {
             throw new IllegalStateException("El proceso seleccionado debe estar listo.");
         }
-        Proceso siguiente = colaListos.remove(indice);
-        return siguiente;
+        return colaListos.remove(indice);
     }
 
     /**
@@ -97,17 +96,13 @@ public class Planificador {
             case "FCFS":
                 return 0;
             case "SPN":
-                int indiceSPN = SPN();
-                return indiceSPN;
+                return SPN();
             case "Prioridad":
-                int indicePrioridad = Prioridad();
-                return indicePrioridad;
+                return Prioridad();
             case "HRRN":
-                int indiceHRRN = HRRN(instante);
-                return indiceHRRN;
+                return HRRN(instante);
             case "SRT":
-                int indiceSRT = SRT();
-                return indiceSRT;
+                return SRT();
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -268,8 +263,7 @@ public class Planificador {
      * @return true si la cola no está vacía.
      */
     public boolean hayProcesosListos() {
-        boolean hay = !colaListos.isEmpty();
-        return hay;
+        return !colaListos.isEmpty();
     }
 
     /**

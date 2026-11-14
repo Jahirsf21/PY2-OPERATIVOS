@@ -37,8 +37,7 @@ public class Disco {
      */
     public String[] leer(int posicion) {
         validarDireccion(posicion);
-        String[] contenido = disco[posicion];
-        return contenido;
+        return disco[posicion];
     }
 
     /**
@@ -149,8 +148,7 @@ public class Disco {
      * @return la cantidad de posiciones del disco.
      */
     public int getTamañoTotal() {
-        int tamaño = disco.length;
-        return tamaño;
+        return disco.length;
     }
 
     /**

@@ -198,8 +198,7 @@ public class CPU {
                 return cx;
             case "DX":
                 try {
-                    int valor = Integer.parseInt(dx);
-                    return valor;
+                    return Integer.parseInt(dx);
                 } catch (NumberFormatException e) {
                     throw new IllegalStateException("DX contiene texto y no puede usarse como número: " + dx);
                 }

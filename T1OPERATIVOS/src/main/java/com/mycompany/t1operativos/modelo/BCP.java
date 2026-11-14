@@ -400,8 +400,7 @@ public class BCP {
      * @return la instrucción en ensamblador, o una cadena vacía si no hay una instrucción.
      */
     public String getIrToString() {
-        String texto = new Parser().traducirInstruccion(ir);
-        return texto;
+        return new Parser().traducirInstruccion(ir);
     }
 
     /**

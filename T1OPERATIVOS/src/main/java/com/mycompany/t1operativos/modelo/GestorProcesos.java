@@ -146,8 +146,7 @@ public class GestorProcesos {
      * @return CPU del despachador.
      */
     public CPU getCPU() {
-        CPU cpu = despachador.getCPU();
-        return cpu;
+        return despachador.getCPU();
     }
 
     /**
@@ -156,8 +155,7 @@ public class GestorProcesos {
      * @return proceso actual, o null.
      */
     public Proceso getActual() {
-        Proceso actual = despachador.getActual();
-        return actual;
+        return despachador.getActual();
     }
 
     /**
@@ -175,8 +173,7 @@ public class GestorProcesos {
      * @return true si queda algún proceso sin terminar, aunque aún no haya llegado.
      */
     public boolean puedeEjecutar() {
-        boolean puede = hayProcesosSinTerminar();
-        return puede;
+        return hayProcesosSinTerminar();
     }
 
     /**
@@ -185,8 +182,7 @@ public class GestorProcesos {
      * @return nombre del algoritmo.
      */
     public String getAlgoritmo() {
-        String algoritmo = planificador.getAlgoritmo();
-        return algoritmo;
+        return planificador.getAlgoritmo();
     }
 
     /**
@@ -213,8 +209,7 @@ public class GestorProcesos {
      * @return true antes del primer paso.
      */
     public boolean puedeEditarTrabajos() {
-        boolean editable = !corridaIniciada;
-        return editable;
+        return !corridaIniciada;
     }
 
     /**
@@ -249,8 +244,7 @@ public class GestorProcesos {
         }
         for (Proceso proceso : procesosRegistrados) {
             if (proceso.getBCP().getIdProceso() == idProceso) {
-                BCP bcp = proceso.getBCP();
-                return bcp;
+                return proceso.getBCP();
             }
         }
         throw new IllegalArgumentException("No existe el proceso " + idProceso + ".");
@@ -397,11 +391,10 @@ public class GestorProcesos {
      * @return etiquetas representadas en kernel.
      */
     private String[] getCamposBCP() {
-        String[] campos = new String[]{"idProceso", "estado", "prioridad", "pc", "inicioMemoria", "finMemoria",
+        return new String[]{"idProceso", "estado", "prioridad", "pc", "inicioMemoria", "finMemoria",
             "ir", "ac", "ax", "bx", "cx", "dx", "ah", "al", "flag", "pila1", "pila2", "pila3", "pila4",
             "pila5", "punteroPila", "cpuActual", "llegada", "rafaga", "tiempoInicio", "tiempoFinal",
             "tiempoServicio", "direccionSiguienteBCP", "archivosAbiertos"};
-        return campos;
     }
 
     /**

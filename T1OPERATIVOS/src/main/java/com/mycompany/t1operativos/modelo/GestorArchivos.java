@@ -96,8 +96,7 @@ public class GestorArchivos {
         if (contenido.isEmpty()) {
             throw new IllegalStateException("El archivo " + nombre + " está vacío; todavía no contiene un número.");
         }
-        int valor = Integer.parseInt(contenido);
-        return valor;
+        return Integer.parseInt(contenido);
     }
 
     /**

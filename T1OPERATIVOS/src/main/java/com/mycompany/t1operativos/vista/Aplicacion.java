@@ -539,9 +539,8 @@ public class Aplicacion extends JFrame {
         EstiloUI.aplicarEstiloTabla(tablaTrabajos, new RendererLista());
         tablaTrabajos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         configurarTablaLista(tablaTrabajos);
-        JPanel tarjeta = EstiloUI.crearTarjetaConTitulo("Lista de Trabajos", EstiloUI.iconoTarjetaTrabajos(),
+        return EstiloUI.crearTarjetaConTitulo("Lista de Trabajos", EstiloUI.iconoTarjetaTrabajos(),
                 EstiloUI.ACENTO_AMBAR, EstiloUI.crearScroll(tablaTrabajos));
-        return tarjeta;
     }
 
     /**
@@ -560,9 +559,8 @@ public class Aplicacion extends JFrame {
         EstiloUI.aplicarEstiloTabla(tablaProcesos, new RendererLista());
         tablaProcesos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         configurarTablaLista(tablaProcesos);
-        JPanel tarjeta = EstiloUI.crearTarjetaConTitulo("Lista de Procesos", EstiloUI.iconoTarjetaProcesos(),
+        return EstiloUI.crearTarjetaConTitulo("Lista de Procesos", EstiloUI.iconoTarjetaProcesos(),
                 EstiloUI.ACENTO_VERDE, EstiloUI.crearScroll(tablaProcesos));
-        return tarjeta;
     }
 
     /**
@@ -871,9 +869,8 @@ public class Aplicacion extends JFrame {
         scroll.getViewport().setBackground(EstiloUI.CONSOLA_FONDO);
         EstiloUI.aplicarBarras(scroll, EstiloUI.CONSOLA_PULGAR, EstiloUI.CONSOLA_PULGAR_HOVER, EstiloUI.CONSOLA_FONDO);
 
-        JPanel tarjeta = EstiloUI.crearTarjetaConTitulo("Consola", EstiloUI.iconoTarjetaConsola(),
+        return EstiloUI.crearTarjetaConTitulo("Consola", EstiloUI.iconoTarjetaConsola(),
                 EstiloUI.CONSOLA_FONDO, scroll);
-        return tarjeta;
     }
 
     /**
@@ -912,8 +909,7 @@ public class Aplicacion extends JFrame {
      * @return la cantidad seleccionada de posiciones de memoria.
      */
     public int getMemoriaSeleccionada() {
-        int tamaño = leerTamañoSeleccionado(selectorMemoria, "RAM");
-        return tamaño;
+        return leerTamañoSeleccionado(selectorMemoria, "RAM");
     }
 
     /**
@@ -922,8 +918,7 @@ public class Aplicacion extends JFrame {
      * @return la cantidad seleccionada de posiciones del disco.
      */
     public int getDiscoSeleccionado() {
-        int tamaño = leerTamañoSeleccionado(selectorDisco, "disco");
-        return tamaño;
+        return leerTamañoSeleccionado(selectorDisco, "disco");
     }
 
     /**
@@ -932,8 +927,7 @@ public class Aplicacion extends JFrame {
      * @return cantidad de posiciones reservadas.
      */
     public int getMemoriaVirtualSeleccionada() {
-        int tamaño = leerTamañoSeleccionado(selectorMemoriaVirtual, "memoria virtual");
-        return tamaño;
+        return leerTamañoSeleccionado(selectorMemoriaVirtual, "memoria virtual");
     }
 
     /**
@@ -949,8 +943,7 @@ public class Aplicacion extends JFrame {
         } catch (ParseException ex) {
             throw new IllegalArgumentException("Tamaño de " + nombre + " inválido: " + ex.getMessage());
         }
-        int tamaño = (Integer) selector.getValue();
-        return tamaño;
+        return (Integer) selector.getValue();
     }
 
     /**
@@ -983,8 +976,7 @@ public class Aplicacion extends JFrame {
      * @return nombre del algoritmo.
      */
     public String getAlgoritmoSeleccionado() {
-        String algoritmo = (String) selectorAlgoritmo.getSelectedItem();
-        return algoritmo;
+        return (String) selectorAlgoritmo.getSelectedItem();
     }
 
     // ================================================================
@@ -1224,8 +1216,7 @@ public class Aplicacion extends JFrame {
                 }
                 return EstiloUI.COLOR_KERNEL_BCP;
             }
-            Color color = super.fondo(tabla, valor, fila, columna);
-            return color;
+            return super.fondo(tabla, valor, fila, columna);
         }
 
         @Override
@@ -1255,8 +1246,7 @@ public class Aplicacion extends JFrame {
             if (fila >= total - virtual) {
                 return EstiloUI.COLOR_DISCO_VIRTUAL;
             }
-            Color color = super.fondo(tabla, valor, fila, columna);
-            return color;
+            return super.fondo(tabla, valor, fila, columna);
         }
 
         @Override
@@ -1282,8 +1272,7 @@ public class Aplicacion extends JFrame {
     private static class RendererLista extends EstiloUI.RendererCelda {
 
         private boolean esColumnaEstado(JTable tabla, int columna) {
-            boolean esEstado = "Estado".equals(tabla.getColumnName(columna));
-            return esEstado;
+            return "Estado".equals(tabla.getColumnName(columna));
         }
 
         @Override
@@ -1291,8 +1280,7 @@ public class Aplicacion extends JFrame {
             if (tabla.isCellEditable(fila, columna)) {
                 return EstiloUI.COLOR_EDITABLE;
             }
-            Color color = super.fondo(tabla, valor, fila, columna);
-            return color;
+            return super.fondo(tabla, valor, fila, columna);
         }
 
         @Override
@@ -1301,8 +1289,7 @@ public class Aplicacion extends JFrame {
                 if (valor == null) {
                     return EstiloUI.TEXTO_SECUNDARIO;
                 }
-                Color color = EstiloUI.colorEstado(valor.toString());
-                return color;
+                return EstiloUI.colorEstado(valor.toString());
             }
             return EstiloUI.TEXTO;
         }
@@ -1312,8 +1299,7 @@ public class Aplicacion extends JFrame {
             if (esColumnaEstado(tabla, columna)) {
                 return EstiloUI.FUENTE_MONO_BOLD;
             }
-            Font fuente = tabla.getFont();
-            return fuente;
+            return tabla.getFont();
         }
 
         @Override
@@ -1321,8 +1307,7 @@ public class Aplicacion extends JFrame {
             if (tabla.isCellEditable(fila, columna)) {
                 return "Doble clic para editar";
             }
-            String texto = super.tooltip(tabla, valor, fila, columna);
-            return texto;
+            return super.tooltip(tabla, valor, fila, columna);
         }
     }
 
@@ -1338,8 +1323,7 @@ public class Aplicacion extends JFrame {
 
         @Override
         public Dimension getPreferredScrollableViewportSize() {
-            Dimension tamaño = getPreferredSize();
-            return tamaño;
+            return getPreferredSize();
         }
 
         @Override
