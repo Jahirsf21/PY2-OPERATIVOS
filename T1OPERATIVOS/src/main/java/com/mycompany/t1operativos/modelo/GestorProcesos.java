@@ -69,16 +69,50 @@ public class GestorProcesos {
      * @return salida de INT 10H, o null si no hubo salida.
      */
     public String ejecutarPaso() {
+        admitirPaso();
+        despacharPaso();
+        return completarPaso();
+    }
+
+    /**
+     * Admite las llegadas en RAM y expropia al actual si corresponde.
+     *
+     * @return true si algún proceso cambió de estado.
+     */
+    public boolean admitirPaso() {
         if (!puedeEjecutar()) {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
         corridaIniciada = true;
-        admitirLlegadas();
+        boolean cambio = admitirLlegadas();
         if (planificador.debeExpropiar(getActual())) {
             expropiarActual();
+            cambio = true;
         }
+        return cambio;
+    }
+
+    /**
+     * Entrega la CPU libre al siguiente proceso listo.
+     *
+     * @return true si despachó un proceso.
+     */
+    public boolean despacharPaso() {
         if (getActual() == null && planificador.hayProcesosListos()) {
             despachador.despachar(planificador.obtenerSiguiente(reloj), reloj);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Ejecuta una instrucción del actual, o registra ocio, y avanza el reloj.
+     *
+     * @return salida de INT 10H, o null si no hubo salida.
+     */
+    public String completarPaso() {
+        if (!puedeEjecutar()) {
+            throw new IllegalStateException("No hay procesos ejecutables.");
         }
         if (getActual() == null) {
             segundosOcio++;
@@ -310,8 +344,10 @@ public class GestorProcesos {
     /**
      * Pasa a la cola de trabajos los procesos cuya llegada ya ocurrió, por
      * llegada y luego por orden de registro, y los carga en RAM si caben.
+     *
+     * @return true si algún proceso pasó a LISTO.
      */
-    private void admitirLlegadas() {
+    private boolean admitirLlegadas() {
         while (true) {
             Proceso siguiente = null;
             for (Proceso proceso : procesosRegistrados) {
@@ -327,7 +363,7 @@ public class GestorProcesos {
             }
             colaTrabajos.add(siguiente);
         }
-        cargarPendientesEnMemoria();
+        return cargarPendientesEnMemoria();
     }
 
     /**
@@ -356,8 +392,11 @@ public class GestorProcesos {
 
     /**
      * Carga los trabajos pendientes en RAM.
+     *
+     * @return true si algún proceso pasó a LISTO.
      */
-    private void cargarPendientesEnMemoria() {
+    private boolean cargarPendientesEnMemoria() {
+        boolean admitio = false;
         while (!colaTrabajos.isEmpty()) {
             Proceso proceso = colaTrabajos.peek();
             BCP bcp = proceso.getBCP();
@@ -381,8 +420,10 @@ public class GestorProcesos {
             escribirBCPEnMemoria(proceso);
             colaTrabajos.remove();
             planificador.agregarListo(proceso);
+            admitio = true;
         }
         actualizarEnlacesBCP();
+        return admitio;
     }
 
     /**

@@ -26,6 +26,9 @@ public class Controlador {
     private Parser parser;
     private Timer ejecucionAutomatica;
     private boolean modoAutomatico;
+    private Timer pausaFase;
+    private int faseSiguiente;
+    private boolean pasoEnCurso;
 
     /**
      * Construye el controlador y registra los eventos.
@@ -41,10 +44,20 @@ public class Controlador {
         this.parser = new Parser();
         this.modoAutomatico = false;
         this.ejecucionAutomatica = new Timer(1000, e -> {
-            if (modoAutomatico) {
+            if (modoAutomatico && !pasoEnCurso) {
                 ejecutarPaso();
             }
         });
+        this.faseSiguiente = 0;
+        this.pasoEnCurso = false;
+        this.pausaFase = new Timer(1000, e -> {
+            if (faseSiguiente == 2) {
+                despacharFase();
+            } else if (faseSiguiente == 3) {
+                completarFase();
+            }
+        });
+        this.pausaFase.setRepeats(false);
         registrarEventos();
         actualizarReloj();
     }
@@ -122,7 +135,7 @@ public class Controlador {
     }
 
     /**
-     * Solicita un paso y muestra su resultado.
+     * Inicia un paso y admite las llegadas.
      */
     private void ejecutarPaso() {
         if (gestor == null) {
@@ -133,19 +146,75 @@ public class Controlador {
             actualizarVista();
             return;
         }
+        pasoEnCurso = true;
         try {
-            String salida = gestor.ejecutarPaso();
+            if (gestor.admitirPaso()) {
+                pausarAntesDe(2);
+                return;
+            }
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            terminarPasoConError(ex);
+            return;
+        }
+        despacharFase();
+    }
+
+    /**
+     * Despacha al siguiente proceso listo.
+     */
+    private void despacharFase() {
+        try {
+            if (gestor.despacharPaso()) {
+                pausarAntesDe(3);
+                return;
+            }
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            terminarPasoConError(ex);
+            return;
+        }
+        completarFase();
+    }
+
+    /**
+     * Ejecuta la instrucción del paso y muestra su resultado.
+     */
+    private void completarFase() {
+        try {
+            String salida = gestor.completarPaso();
+            pasoEnCurso = false;
             if (salida != null) {
                 vista.imprimirPantalla(salida);
             }
             actualizarVista();
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            ejecucionAutomatica.stop();
-            modoAutomatico = false;
-            actualizarVista();
-            vista.imprimirPantalla("Error: " + ex.getMessage());
-            mostrarError(ex.getMessage());
+            terminarPasoConError(ex);
         }
+    }
+
+    /**
+     * Muestra la vista y programa la fase siguiente.
+     *
+     * @param fase 2 para despacho, 3 para ejecución.
+     */
+    private void pausarAntesDe(int fase) {
+        faseSiguiente = fase;
+        actualizarVista();
+        pausaFase.restart();
+    }
+
+    /**
+     * Detiene el paso y muestra el error.
+     *
+     * @param ex error del gestor.
+     */
+    private void terminarPasoConError(RuntimeException ex) {
+        pausaFase.stop();
+        pasoEnCurso = false;
+        ejecucionAutomatica.stop();
+        modoAutomatico = false;
+        actualizarVista();
+        vista.imprimirPantalla("Error: " + ex.getMessage());
+        mostrarError(ex.getMessage());
     }
 
     /**
@@ -201,6 +270,8 @@ public class Controlador {
     private void limpiar() {
         ejecucionAutomatica.stop();
         modoAutomatico = false;
+        pausaFase.stop();
+        pasoEnCurso = false;
         if (gestor != null) {
             gestor.limpiar();
         }
@@ -440,17 +511,17 @@ public class Controlador {
         if (!hayProcesosRegistrados || !gestor.hayProcesosSinTerminar()) {
             modoAutomatico = false;
         }
-        if (modoAutomatico && ejecutable) {
+        if (modoAutomatico && ejecutable && !pasoEnCurso) {
             if (!ejecucionAutomatica.isRunning()) {
                 ejecucionAutomatica.start();
             }
         } else {
             ejecucionAutomatica.stop();
         }
-        vista.getBtnEjecutar().setEnabled(ejecutable && !modoAutomatico);
-        vista.getBtnPasoAPaso().setEnabled(ejecutable && !modoAutomatico);
-        vista.getBtnCargarArchivo().setEnabled(true);
-        vista.getBtnLimpiar().setEnabled(hayProcesosRegistrados && (!modoAutomatico || !ejecutable));
+        vista.getBtnEjecutar().setEnabled(ejecutable && !modoAutomatico && !pasoEnCurso);
+        vista.getBtnPasoAPaso().setEnabled(ejecutable && !modoAutomatico && !pasoEnCurso);
+        vista.getBtnCargarArchivo().setEnabled(!pasoEnCurso);
+        vista.getBtnLimpiar().setEnabled(hayProcesosRegistrados && !pasoEnCurso && (!modoAutomatico || !ejecutable));
         vista.setConfiguracionHabilitada(!hayProcesosRegistrados);
         vista.setTrabajosEditables(hayProcesosRegistrados && gestor.puedeEditarTrabajos());
     }
