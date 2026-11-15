@@ -10,6 +10,9 @@ public class Proceso {
     private BCP bcp;
     private int posicionIndice;
     private int posicionBCP;
+    private int nivel;
+    private int quantumUsado;
+    private int tiempoEspera;
 
     /**
      * Construye un trabajo sin memoria asignada.
@@ -24,6 +27,9 @@ public class Proceso {
         this.bcp = bcp;
         this.posicionIndice = posicionIndice;
         this.posicionBCP = -1;
+        this.nivel = 0;
+        this.quantumUsado = 0;
+        this.tiempoEspera = 0;
     }
 
     /**
@@ -66,6 +72,69 @@ public class Proceso {
             throw new IllegalStateException("El proceso ya tiene BCP en RAM o dejó de ser nuevo.");
         }
         posicionBCP = posicion;
+    }
+
+    /**
+     * Obtiene el nivel de MLFQ del proceso.
+     *
+     * @return nivel, 0 es el más alto.
+     */
+    public int getNivel() {
+        return nivel;
+    }
+
+    /**
+     * Cambia el nivel de MLFQ del proceso.
+     *
+     * @param nivel nivel no negativo.
+     */
+    public void setNivel(int nivel) {
+        if (nivel < 0) {
+            throw new IllegalArgumentException("El nivel no puede ser negativo.");
+        }
+        this.nivel = nivel;
+    }
+
+    /**
+     * Obtiene los segundos del quantum de su nivel usados antes de ser interrumpido.
+     *
+     * @return segundos usados.
+     */
+    public int getQuantumUsado() {
+        return quantumUsado;
+    }
+
+    /**
+     * Guarda los segundos del quantum de su nivel ya usados.
+     *
+     * @param quantumUsado segundos no negativos.
+     */
+    public void setQuantumUsado(int quantumUsado) {
+        if (quantumUsado < 0) {
+            throw new IllegalArgumentException("El quantum usado no puede ser negativo.");
+        }
+        this.quantumUsado = quantumUsado;
+    }
+
+    /**
+     * Obtiene los segundos seguidos que lleva listo sin ejecutarse.
+     *
+     * @return segundos de espera.
+     */
+    public int getTiempoEspera() {
+        return tiempoEspera;
+    }
+
+    /**
+     * Cambia los segundos seguidos que lleva listo sin ejecutarse.
+     *
+     * @param tiempoEspera segundos no negativos.
+     */
+    public void setTiempoEspera(int tiempoEspera) {
+        if (tiempoEspera < 0) {
+            throw new IllegalArgumentException("El tiempo de espera no puede ser negativo.");
+        }
+        this.tiempoEspera = tiempoEspera;
     }
 
     /**

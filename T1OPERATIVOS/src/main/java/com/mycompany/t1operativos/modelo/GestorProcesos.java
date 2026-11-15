@@ -25,7 +25,7 @@ public class GestorProcesos {
     private int reloj;
     private int segundosOcio;
     private boolean corridaIniciada;
-    private int segundosTurno;
+    private int quantumUsado;
 
     /**
      * Construye los recursos de la simulación.
@@ -35,9 +35,11 @@ public class GestorProcesos {
      * @param tamañoMemoriaVirtual posiciones reservadas en disco.
      * @param algoritmo algoritmo de planificación.
      * @param quantum segundos por turno en RR.
+     * @param quantumsNivel quantum de cada nivel de MLFQ.
+     * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
      */
-    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum) {
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum);
+    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera) {
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera);
     }
 
     /**
@@ -88,18 +90,27 @@ public class GestorProcesos {
         }
         corridaIniciada = true;
         boolean cambio = false;
-        boolean agotado = getActual() != null && planificador.agotoQuantum(segundosTurno);
+        boolean agotado = getActual() != null && planificador.agotoQuantum(getActual(), quantumUsado);
+        if (agotado) {
+            planificador.bajarNivel(getActual());
+        }
         if (agotado && planificador.hayProcesosListos()) {
             expropiarActual();
             cambio = true;
             agotado = false;
         }
+        if (planificador.subirNivel()) {
+            cambio = true;
+        }
         admitirLlegadas();
         if (admitirEnMemoria()) {
             cambio = true;
         }
-        if (agotado || planificador.debeExpropiar(getActual(), reloj)) {
+        if (agotado) {
             expropiarActual();
+            cambio = true;
+        } else if (planificador.debeExpropiar(getActual(), reloj)) {
+            interrumpirActual();
             cambio = true;
         }
         return cambio;
@@ -112,8 +123,11 @@ public class GestorProcesos {
      */
     public boolean despacharPaso() {
         if (getActual() == null && planificador.hayProcesosListos()) {
-            despachador.despachar(planificador.obtenerSiguiente(reloj), reloj);
-            segundosTurno = 0;
+            Proceso siguiente = planificador.obtenerSiguiente(reloj);
+            despachador.despachar(siguiente, reloj);
+            quantumUsado = siguiente.getQuantumUsado();
+            siguiente.setQuantumUsado(0);
+            siguiente.setTiempoEspera(0);
             return true;
         }
         return false;
@@ -128,6 +142,7 @@ public class GestorProcesos {
         if (!puedeEjecutar()) {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
+        planificador.contarEspera();
         if (getActual() == null) {
             segundosOcio++;
             reloj++;
@@ -146,7 +161,7 @@ public class GestorProcesos {
             }
             cpu.cargarInstruccion(instruccion);
             bcp.aumentarTiempoEmpleado();
-            segundosTurno++;
+            quantumUsado++;
             reloj++;
             String salida = ejecutarInstruccion(instruccion);
             bcp.guardarContexto(cpu);
@@ -168,7 +183,7 @@ public class GestorProcesos {
      * Reinicia la simulación conservando capacidades.
      */
     public void limpiar() {
-        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum());
+        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera());
     }
 
     /**
@@ -241,6 +256,37 @@ public class GestorProcesos {
      */
     public int getQuantum() {
         return planificador.getQuantum();
+    }
+
+    /**
+     * Obtiene el quantum de cada nivel de MLFQ.
+     *
+     * @return quantums por nivel.
+     */
+    public int[] getQuantumsNivel() {
+        return planificador.getQuantumsNivel();
+    }
+
+    /**
+     * Obtiene los segundos de espera para subir de nivel en MLFQ.
+     *
+     * @return límite de espera.
+     */
+    public int getLimiteEspera() {
+        return planificador.getLimiteEspera();
+    }
+
+    /**
+     * Obtiene los segundos del quantum de su nivel que lleva usados un proceso.
+     *
+     * @param proceso proceso cargado en RAM.
+     * @return segundos usados; del turno en curso si tiene la CPU.
+     */
+    public int getQuantumUsado(Proceso proceso) {
+        if (proceso == getActual()) {
+            return quantumUsado;
+        }
+        return proceso.getQuantumUsado();
     }
 
     /**
@@ -633,6 +679,15 @@ public class GestorProcesos {
     }
 
     /**
+     * Interrumpe al actual porque otro listo tiene preferencia y lo devuelve a listos.
+     */
+    private void interrumpirActual() {
+        Proceso interrumpido = despachador.expropiarActual();
+        escribirBCPEnMemoria(interrumpido);
+        planificador.reinsertarInterrumpido(interrumpido, quantumUsado);
+    }
+
+    /**
      * Finaliza y libera un proceso.
      *
      * @param proceso proceso que termina.
@@ -666,8 +721,10 @@ public class GestorProcesos {
      * @param tamañoMemoriaVirtual posiciones reservadas en disco.
      * @param algoritmo algoritmo de planificación.
      * @param quantum segundos por turno en RR.
+     * @param quantumsNivel quantum de cada nivel de MLFQ.
+     * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
      */
-    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum) {
+    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera) {
         if (tamañoMemoria < 128) {
             throw new IllegalArgumentException("La RAM debe ser al menos 128 posiciones.");
         }
@@ -679,7 +736,7 @@ public class GestorProcesos {
         Memoria nuevaMemoria = new Memoria(tamañoMemoria, tamañoKernel);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
-        Planificador nuevoPlanificador = new Planificador(algoritmo, quantum);
+        Planificador nuevoPlanificador = new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera);
         Despachador nuevoDespachador = new Despachador(new CPU());
         memoria = nuevaMemoria;
         disco = nuevoDisco;
@@ -692,6 +749,6 @@ public class GestorProcesos {
         reloj = 0;
         segundosOcio = 0;
         corridaIniciada = false;
-        segundosTurno = 0;
+        quantumUsado = 0;
     }
 }

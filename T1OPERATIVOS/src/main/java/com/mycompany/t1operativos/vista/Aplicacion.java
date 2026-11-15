@@ -88,6 +88,10 @@ public class Aplicacion extends JFrame {
     private JComboBox<String> selectorAlgoritmo;
     /** Quantum elegido para RR. */
     private JSpinner selectorQuantum;
+    /** Quantums por nivel de MLFQ. */
+    private JTextField selectorQuantumsNivel;
+    /** Segundos de espera para subir de nivel en MLFQ. */
+    private JSpinner selectorLimiteEspera;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
@@ -241,12 +245,22 @@ public class Aplicacion extends JFrame {
         EstiloUI.estilizarSpinner(selectorMemoria);
         EstiloUI.estilizarSpinner(selectorDisco);
         EstiloUI.estilizarSpinner(selectorMemoriaVirtual);
-        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery", "GuaranteedScheduling"});
+        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery", "GuaranteedScheduling", "MLFQ"});
         EstiloUI.estilizarCombo(selectorAlgoritmo);
         selectorAlgoritmo.setPreferredSize(new Dimension(130, 34));
         selectorQuantum = new JSpinner(new SpinnerNumberModel(1, 1, null, 1));
         EstiloUI.estilizarSpinner(selectorQuantum);
         selectorQuantum.setEnabled(false);
+        selectorQuantumsNivel = new JTextField("1, 2, 4");
+        selectorQuantumsNivel.setFont(EstiloUI.FUENTE_MONO);
+        selectorQuantumsNivel.setForeground(EstiloUI.TEXTO);
+        selectorQuantumsNivel.setPreferredSize(new Dimension(130, 34));
+        selectorQuantumsNivel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(EstiloUI.BORDE),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+        selectorQuantumsNivel.setEnabled(false);
+        selectorLimiteEspera = new JSpinner(new SpinnerNumberModel(5, 1, null, 1));
+        EstiloUI.estilizarSpinner(selectorLimiteEspera);
+        selectorLimiteEspera.setEnabled(false);
 
         lblDistribucionMemoria = new JLabel();
         lblDistribucionMemoria.setFont(EstiloUI.FUENTE_ETIQUETA);
@@ -279,6 +293,12 @@ public class Aplicacion extends JFrame {
         tarjetaPlanificacion.add(Box.createVerticalStrut(10));
         tarjetaPlanificacion.add(crearFilaCampo("Quantum",
                 "Segundos por turno en RR y Lottery.", selectorQuantum));
+        tarjetaPlanificacion.add(Box.createVerticalStrut(10));
+        tarjetaPlanificacion.add(crearFilaCampo("Quantums por Nivel de Multilevel Feedback Queue",
+                "Quantum de cada cola separados por comas (2 a 5 niveles).", selectorQuantumsNivel));
+        tarjetaPlanificacion.add(Box.createVerticalStrut(10));
+        tarjetaPlanificacion.add(crearFilaCampo("Límite de espera",
+                "Segundos de espera para subir de nivel en MLFQ.", selectorLimiteEspera));
 
         JPanel cuerpo = new JPanel(new GridBagLayout());
         cuerpo.setBackground(EstiloUI.FONDO);
@@ -306,7 +326,7 @@ public class Aplicacion extends JFrame {
             actualizarDistribucionDisco();
         });
         selectorMemoriaVirtual.addChangeListener(e -> actualizarDistribucionDisco());
-        selectorAlgoritmo.addActionListener(e -> selectorQuantum.setEnabled(selectorAlgoritmo.isEnabled() && usaQuantum()));
+        selectorAlgoritmo.addActionListener(e -> habilitarCamposAlgoritmo(selectorAlgoritmo.isEnabled()));
         actualizarDistribucionMemoria();
         actualizarDistribucionDisco();
 
@@ -401,6 +421,8 @@ public class Aplicacion extends JFrame {
             getDiscoSeleccionado();
             getMemoriaVirtualSeleccionada();
             getQuantumSeleccionado();
+            getQuantumsNivelSeleccionados();
+            getLimiteEsperaSeleccionado();
             ventanaConfiguracion.setVisible(false);
             firePropertyChange("Configuración confirmada", null, Boolean.TRUE);
         } catch (IllegalArgumentException ex) {
@@ -561,7 +583,7 @@ public class Aplicacion extends JFrame {
      * @return panel de procesos y estados.
      */
     private JPanel crearPanelProcesos() {
-        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante", "Razón"}, 0) {
+        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante", "Razón", "Nivel"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -980,7 +1002,19 @@ public class Aplicacion extends JFrame {
         selectorDisco.setEnabled(habilitado);
         selectorMemoriaVirtual.setEnabled(habilitado);
         selectorAlgoritmo.setEnabled(habilitado);
+        habilitarCamposAlgoritmo(habilitado);
+    }
+
+    /**
+     * Habilita los campos que usa el algoritmo elegido.
+     *
+     * @param habilitado {@code true} si la configuración se puede cambiar.
+     */
+    private void habilitarCamposAlgoritmo(boolean habilitado) {
+        boolean esMLFQ = "MLFQ".equals(getAlgoritmoSeleccionado());
         selectorQuantum.setEnabled(habilitado && usaQuantum());
+        selectorQuantumsNivel.setEnabled(habilitado && esMLFQ);
+        selectorLimiteEspera.setEnabled(habilitado && esMLFQ);
     }
 
     /**
@@ -1015,6 +1049,44 @@ public class Aplicacion extends JFrame {
             throw new IllegalArgumentException("El quantum debe ser un entero mayor o igual a 1.");
         }
         return (Integer) selectorQuantum.getValue();
+    }
+
+    /**
+     * Confirma y obtiene el quantum de cada nivel de MLFQ.
+     *
+     * @return quantums por nivel.
+     */
+    public int[] getQuantumsNivelSeleccionados() {
+        String[] partes = selectorQuantumsNivel.getText().split(",");
+        if (partes.length < 2 || partes.length > 5) {
+            throw new IllegalArgumentException("Los quantums por nivel deben ser de 2 a 5 enteros separados por comas.");
+        }
+        int[] quantums = new int[partes.length];
+        for (int i = 0; i < partes.length; i++) {
+            try {
+                quantums[i] = Integer.parseInt(partes[i].trim());
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Quantum de nivel inválido: \"" + partes[i].trim() + "\". Debe ser un entero.");
+            }
+            if (quantums[i] < 1) {
+                throw new IllegalArgumentException("El quantum de cada nivel debe ser un entero mayor o igual a 1.");
+            }
+        }
+        return quantums;
+    }
+
+    /**
+     * Confirma y obtiene los segundos de espera para subir de nivel en MLFQ.
+     *
+     * @return límite de espera.
+     */
+    public int getLimiteEsperaSeleccionado() {
+        try {
+            selectorLimiteEspera.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("El límite de espera debe ser un entero mayor o igual a 1.");
+        }
+        return (Integer) selectorLimiteEspera.getValue();
     }
 
     // ================================================================

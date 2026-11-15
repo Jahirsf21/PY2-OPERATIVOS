@@ -17,25 +17,42 @@ public class Planificador {
     private int quantum;
     private Random sorteo;
     private String ultimoSorteo;
+    private int[] quantumsNivel;
+    private int limiteEspera;
 
     /**
      * Construye una cola vacía de procesos listos para CPU.
      *
      * @param algoritmo nombre del algoritmo de planificación.
      * @param quantum segundos por turno en RR.
+     * @param quantumsNivel quantum de cada nivel de MLFQ, de 2 a 5 niveles.
+     * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
      */
-    public Planificador(String algoritmo, int quantum) {
+    public Planificador(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera) {
         if (!esAlgoritmoDisponible(algoritmo)) {
             throw new IllegalArgumentException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
         if (quantum < 1) {
             throw new IllegalArgumentException("El quantum debe ser un entero mayor o igual a 1.");
         }
+        if (quantumsNivel == null || quantumsNivel.length < 2 || quantumsNivel.length > 5) {
+            throw new IllegalArgumentException("Multilevel Feedback Queue necesita de 2 a 5 niveles.");
+        }
+        for (int quantumNivel : quantumsNivel) {
+            if (quantumNivel < 1) {
+                throw new IllegalArgumentException("El quantum de cada nivel debe ser un entero mayor o igual a 1.");
+            }
+        }
+        if (limiteEspera < 1) {
+            throw new IllegalArgumentException("El límite de espera debe ser un entero mayor o igual a 1.");
+        }
         colaListos = new ArrayList<>();
         this.algoritmo = algoritmo;
         this.quantum = quantum;
         this.sorteo = new Random();
         this.ultimoSorteo = null;
+        this.quantumsNivel = quantumsNivel;
+        this.limiteEspera = limiteEspera;
     }
 
     /**
@@ -45,7 +62,7 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo) || "MLFQ".equals(algoritmo);
         return disponible;
     }
 
@@ -68,6 +85,24 @@ public class Planificador {
     }
 
     /**
+     * Obtiene el quantum de cada nivel de MLFQ.
+     *
+     * @return quantums por nivel.
+     */
+    public int[] getQuantumsNivel() {
+        return quantumsNivel;
+    }
+
+    /**
+     * Obtiene los segundos de espera para subir de nivel en MLFQ.
+     *
+     * @return límite de espera.
+     */
+    public int getLimiteEspera() {
+        return limiteEspera;
+    }
+
+    /**
      * Añade un proceso al final de listos.
      *
      * @param proceso proceso listo y cargado en RAM.
@@ -86,6 +121,21 @@ public class Planificador {
             }
         }
         colaListos.add(proceso);
+    }
+
+    /**
+     * Devuelve a listos un proceso interrumpido; en MLFQ queda al frente con el quantum que llevaba.
+     *
+     * @param proceso proceso interrumpido.
+     * @param quantumUsado segundos del quantum usados en su turno.
+     */
+    public void reinsertarInterrumpido(Proceso proceso, int quantumUsado) {
+        agregarListo(proceso);
+        if ("MLFQ".equals(algoritmo)) {
+            proceso.setQuantumUsado(quantumUsado);
+            colaListos.remove(colaListos.size() - 1);
+            colaListos.add(0, proceso);
+        }
     }
 
     /**
@@ -130,6 +180,8 @@ public class Planificador {
                 return Lottery();
             case "GuaranteedScheduling":
                 return GuaranteedScheduling(instante);
+            case "MLFQ":
+                return MLFQ();
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -309,6 +361,74 @@ public class Planificador {
     }
 
     /**
+     * Busca el primero del nivel más alto con procesos listos.
+     *
+     * @return posición del proceso elegido.
+     */
+    private int MLFQ() {
+        int elegido = 0;
+        for (int i = 1; i < colaListos.size(); i++) {
+            if (colaListos.get(i).getNivel() < colaListos.get(elegido).getNivel()) {
+                elegido = i;
+            }
+        }
+        return elegido;
+    }
+
+    /**
+     * Baja al proceso un nivel al agotar su quantum en MLFQ; en el último nivel se mantiene.
+     *
+     * @param proceso proceso que agotó su quantum.
+     */
+    public void bajarNivel(Proceso proceso) {
+        if ("MLFQ".equals(algoritmo)) {
+            if (proceso.getNivel() < quantumsNivel.length - 1) {
+                proceso.setNivel(proceso.getNivel() + 1);
+            }
+            proceso.setQuantumUsado(0);
+        }
+    }
+
+    /**
+     * Sube un nivel en MLFQ a los listos que alcanzaron el límite de espera; quedan al final de la cola.
+     *
+     * @return true si algún proceso subió de nivel.
+     */
+    public boolean subirNivel() {
+        boolean subio = false;
+        if ("MLFQ".equals(algoritmo)) {
+            int revisados = 0;
+            int total = colaListos.size();
+            int i = 0;
+            while (revisados < total) {
+                Proceso proceso = colaListos.get(i);
+                if (proceso.getNivel() > 0 && proceso.getTiempoEspera() >= limiteEspera) {
+                    proceso.setNivel(proceso.getNivel() - 1);
+                    proceso.setTiempoEspera(0);
+                    colaListos.remove(i);
+                    colaListos.add(proceso);
+                    subio = true;
+                } else {
+                    i++;
+                }
+                revisados++;
+            }
+        }
+        return subio;
+    }
+
+    /**
+     * Suma un segundo de espera a cada proceso listo en MLFQ.
+     */
+    public void contarEspera() {
+        if ("MLFQ".equals(algoritmo)) {
+            for (Proceso listo : colaListos) {
+                listo.setTiempoEspera(listo.getTiempoEspera() + 1);
+            }
+        }
+    }
+
+    /**
      * Busca el menor tiempo restante; empata por menor llegada y luego por menor ID.
      *
      * @return posición del proceso elegido.
@@ -368,6 +488,7 @@ public class Planificador {
      * Indica si el proceso actual debe dejar la CPU.
      * SRT expropia: cuando algún listo tiene un restante estrictamente menor que el del actual.
      * GuaranteedScheduling expropia: cuando algún listo tiene una razón de uso estrictamente menor que la del actual.
+     * MLFQ expropia: cuando algún listo está en un nivel más alto que el del actual.
      * El empate no expropia.
      *
      * @param actual proceso que tiene la CPU.
@@ -393,18 +514,30 @@ public class Planificador {
                 }
             }
         }
+        if ("MLFQ".equals(algoritmo) && actual != null) {
+            for (Proceso listo : colaListos) {
+                if (listo.getNivel() < actual.getNivel()) {
+                    expropiar = true;
+                }
+            }
+        }
         return expropiar;
     }
 
     /**
      * Indica si el proceso actual debe dejar la CPU por quantum.
      * RR y Lottery expropian cuando su turno alcanza el quantum configurado.
+     * MLFQ expropia cuando su turno alcanza el quantum de su nivel.
      *
-     * @param segundosTurno segundos ejecutados desde su despacho.
+     * @param actual proceso que tiene la CPU.
+     * @param quantumUsado segundos ejecutados en su turno.
      * @return true si debe expropiarse.
      */
-    public boolean agotoQuantum(int segundosTurno) {
-        boolean agotado = ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) && segundosTurno >= quantum;
+    public boolean agotoQuantum(Proceso actual, int quantumUsado) {
+        boolean agotado = ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) && quantumUsado >= quantum;
+        if ("MLFQ".equals(algoritmo)) {
+            agotado = quantumUsado >= quantumsNivel[actual.getNivel()];
+        }
         return agotado;
     }
 

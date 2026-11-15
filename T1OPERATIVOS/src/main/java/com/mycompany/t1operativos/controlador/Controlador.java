@@ -106,7 +106,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || destino.getProcesosRegistrados().isEmpty()) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -391,7 +391,11 @@ public class Controlador {
                     if ("GuaranteedScheduling".equals(gestor.getAlgoritmo())) {
                         razon = String.format("%.2f", gestor.getRazon(proceso));
                     }
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante(), razon});
+                    String nivel = "";
+                    if ("MLFQ".equals(gestor.getAlgoritmo())) {
+                        nivel = proceso.getNivel() + " (" + gestor.getQuantumUsado(proceso) + "/" + gestor.getQuantumsNivel()[proceso.getNivel()] + ")";
+                    }
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante(), razon, nivel});
                 }
             }
         }
@@ -405,17 +409,31 @@ public class Controlador {
         int ocio = 0;
         String algoritmo = vista.getAlgoritmoSeleccionado();
         int quantum = vista.getQuantumSeleccionado();
+        int[] quantumsNivel = vista.getQuantumsNivelSeleccionados();
+        int limiteEspera = vista.getLimiteEsperaSeleccionado();
         String sorteo = null;
         if (gestor != null && !gestor.getProcesosRegistrados().isEmpty()) {
             reloj = gestor.getReloj();
             ocio = gestor.getSegundosOcio();
             algoritmo = gestor.getAlgoritmo();
             quantum = gestor.getQuantum();
+            quantumsNivel = gestor.getQuantumsNivel();
+            limiteEspera = gestor.getLimiteEspera();
             sorteo = gestor.getUltimoSorteo();
         }
         String texto = algoritmo;
         if ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) {
             texto = texto + " (q = " + quantum + ")";
+        }
+        if ("MLFQ".equals(algoritmo)) {
+            String niveles = "";
+            for (int i = 0; i < quantumsNivel.length; i++) {
+                if (i > 0) {
+                    niveles = niveles + ", ";
+                }
+                niveles = niveles + quantumsNivel[i];
+            }
+            texto = texto + " (q = " + niveles + "; límite de espera " + limiteEspera + ")";
         }
         if (sorteo != null) {
             texto = texto + "    Sorteo: " + sorteo;
