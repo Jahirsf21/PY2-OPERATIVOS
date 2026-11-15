@@ -125,4 +125,47 @@ public class ResultadoCorrida {
         double razon = (double) retorno / servicio;
         return razon;
     }
+
+    /**
+     * Calcula el tiempo de retorno promedio de los procesos terminados con servicio.
+     *
+     * @return promedio de Tr, o -1 si no hay procesos que promediar.
+     */
+    public double calcularPromedioRetorno() {
+        int suma = 0;
+        int cantidad = 0;
+        for (Proceso proceso : procesos) {
+            if (calcularRazonRetorno(proceso) >= 0) {
+                suma = suma + calcularRetorno(proceso);
+                cantidad++;
+            }
+        }
+        if (cantidad == 0) {
+            return -1;
+        }
+        double promedio = (double) suma / cantidad;
+        return promedio;
+    }
+
+    /**
+     * Calcula la razón Tr/Ts promedio de los procesos terminados con servicio.
+     *
+     * @return promedio de Tr/Ts, o -1 si no hay procesos que promediar.
+     */
+    public double calcularPromedioRazon() {
+        double suma = 0;
+        int cantidad = 0;
+        for (Proceso proceso : procesos) {
+            double razon = calcularRazonRetorno(proceso);
+            if (razon >= 0) {
+                suma = suma + razon;
+                cantidad++;
+            }
+        }
+        if (cantidad == 0) {
+            return -1;
+        }
+        double promedio = suma / cantidad;
+        return promedio;
+    }
 }
