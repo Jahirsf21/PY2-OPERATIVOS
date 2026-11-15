@@ -102,6 +102,8 @@ public class Aplicacion extends JFrame {
     private JSpinner selectorTasaA;
     /** Tasa de aumento de prioridad de los aceptados en SRR. */
     private JSpinner selectorTasaB;
+    /** Cantidad de CPU del simulador. */
+    private JSpinner selectorCantidadCPU;
     /** Tipo de asignación de la zona de usuario. */
     private JComboBox<String> selectorTipoAsignacion;
     /** Cantidad de particiones fijas iguales. */
@@ -289,6 +291,8 @@ public class Aplicacion extends JFrame {
         selectorTasaB = new JSpinner(new SpinnerNumberModel(1, 0, null, 1));
         EstiloUI.estilizarSpinner(selectorTasaB);
         selectorTasaB.setEnabled(false);
+        selectorCantidadCPU = new JSpinner(new SpinnerNumberModel(1, 1, 5, 1));
+        EstiloUI.estilizarSpinner(selectorCantidadCPU);
         selectorTipoAsignacion = new JComboBox<>(new String[]{"Fija iguales", "Fija desiguales", "First Fit", "Next Fit", "Best Fit"});
         EstiloUI.estilizarCombo(selectorTipoAsignacion);
         selectorTipoAsignacion.setPreferredSize(new Dimension(130, 34));
@@ -341,6 +345,9 @@ public class Aplicacion extends JFrame {
 
         // ---- Tarjeta de planificación ----
         JPanel tarjetaPlanificacion = crearTarjetaConfiguracion("Planificación");
+        tarjetaPlanificacion.add(crearFilaCampo("Cantidad de CPU",
+                "De 1 a 5; cada CPU atiende hasta 5 procesos.", selectorCantidadCPU));
+        tarjetaPlanificacion.add(Box.createVerticalStrut(10));
         tarjetaPlanificacion.add(crearFilaCampo("Algoritmo de planificación",
                 "Política para elegir el siguiente proceso.", selectorAlgoritmo));
         tarjetaPlanificacion.add(Box.createVerticalStrut(10));
@@ -1096,6 +1103,7 @@ public class Aplicacion extends JFrame {
         selectorMemoria.setEnabled(habilitado);
         selectorDisco.setEnabled(habilitado);
         selectorMemoriaVirtual.setEnabled(habilitado);
+        selectorCantidadCPU.setEnabled(habilitado);
         selectorAlgoritmo.setEnabled(habilitado);
         habilitarCamposAlgoritmo(habilitado);
         selectorTipoAsignacion.setEnabled(habilitado);
@@ -1267,6 +1275,20 @@ public class Aplicacion extends JFrame {
      */
     public String getTipoAsignacionSeleccionado() {
         return (String) selectorTipoAsignacion.getSelectedItem();
+    }
+
+    /**
+     * Confirma y obtiene la cantidad de CPU.
+     *
+     * @return cantidad de CPU, de 1 a 5.
+     */
+    public int getCantidadCPUSeleccionada() {
+        try {
+            selectorCantidadCPU.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("La cantidad de CPU debe ser un entero de 1 a 5.");
+        }
+        return (Integer) selectorCantidadCPU.getValue();
     }
 
     /**
