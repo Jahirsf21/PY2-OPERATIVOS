@@ -444,6 +444,18 @@ public class GestorProcesos {
     }
 
     /**
+     * Obtiene el resultado de la corrida en curso o, si terminó, el guardado en el historial.
+     *
+     * @return resultado de la corrida actual.
+     */
+    public ResultadoCorrida getCorridaActual() {
+        if (estaCorridaTerminada()) {
+            return historial.get(historial.size() - 1);
+        }
+        return new ResultadoCorrida(historial.size() + 1, planificador, asignador, procesosRegistrados, reloj, segundosOcio);
+    }
+
+    /**
      * Guarda el resultado de la corrida en el historial si terminó.
      */
     private void guardarResultado() {

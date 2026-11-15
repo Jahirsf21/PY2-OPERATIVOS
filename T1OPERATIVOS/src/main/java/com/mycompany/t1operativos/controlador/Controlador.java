@@ -6,7 +6,9 @@ import com.mycompany.t1operativos.modelo.Disco;
 import com.mycompany.t1operativos.modelo.GestorProcesos;
 import com.mycompany.t1operativos.modelo.Memoria;
 import com.mycompany.t1operativos.modelo.Parser;
+import com.mycompany.t1operativos.modelo.Planificador;
 import com.mycompany.t1operativos.modelo.Proceso;
+import com.mycompany.t1operativos.modelo.ResultadoCorrida;
 import com.mycompany.t1operativos.vista.Aplicacion;
 import java.io.File;
 import java.util.List;
@@ -91,6 +93,7 @@ public class Controlador {
         });
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
+        vista.getBtnNuevaCorrida().addActionListener(e -> nuevaCorrida());
         vista.getModeloTrabajos().addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 1 || e.getColumn() == 3 || e.getColumn() == 4)) {
                 cambiarDatoTrabajo(e.getFirstRow(), e.getColumn());
@@ -106,7 +109,7 @@ public class Controlador {
     private void cargarProgramas(List<File> archivos) {
         GestorProcesos destino = gestor;
         try {
-            if (destino == null || destino.getProcesosRegistrados().isEmpty()) {
+            if (destino == null || (destino.getProcesosRegistrados().isEmpty() && destino.getHistorial().isEmpty())) {
                 destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
@@ -285,6 +288,30 @@ public class Controlador {
         vista.limpiarConsola();
         vista.setTitle("Mini PC");
         actualizarVista();
+    }
+
+    /**
+     * Inicia otra corrida con los mismos programas y la configuración elegida.
+     */
+    private void nuevaCorrida() {
+        try {
+            List<String> mensajes = gestor.nuevaCorrida(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
+            vista.limpiarConsola();
+            actualizarVista();
+            if (!mensajes.isEmpty()) {
+                String texto = "";
+                for (int i = 0; i < mensajes.size(); i++) {
+                    if (i > 0) {
+                        texto = texto + "\n";
+                    }
+                    texto = texto + mensajes.get(i);
+                }
+                mostrarError(texto);
+            }
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            actualizarVista();
+            mostrarError(ex.getMessage());
+        }
     }
 
     /**
@@ -489,6 +516,25 @@ public class Controlador {
             tasaB = gestor.getTasaB();
             sorteo = gestor.getUltimoSorteo();
         }
+        String texto = describirAlgoritmo(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
+        if (sorteo != null) {
+            texto = texto + "    Sorteo: " + sorteo;
+        }
+        vista.mostrarReloj("Algoritmo: " + texto + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
+    }
+
+    /**
+     * Arma el nombre del algoritmo con sus parámetros.
+     *
+     * @param algoritmo nombre del algoritmo.
+     * @param quantum segundos por turno.
+     * @param quantumsNivel quantum de cada nivel de MLFQ.
+     * @param limiteEspera segundos para subir de nivel en MLFQ.
+     * @param tasaA tasa de los nuevos en SRR.
+     * @param tasaB tasa de los aceptados en SRR.
+     * @return texto como «RR (q = 2)».
+     */
+    private String describirAlgoritmo(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
         String texto = algoritmo;
         if ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) {
             texto = texto + " (q = " + quantum + ")";
@@ -506,10 +552,7 @@ public class Controlador {
         if ("SRR".equals(algoritmo)) {
             texto = texto + " (q = " + quantum + "; A = " + tasaA + ", B = " + tasaB + ")";
         }
-        if (sorteo != null) {
-            texto = texto + "    Sorteo: " + sorteo;
-        }
-        vista.mostrarReloj("Algoritmo: " + texto + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
+        return texto;
     }
 
     /**
@@ -518,23 +561,46 @@ public class Controlador {
     private void actualizarEstadisticas() {
         DefaultTableModel modelo = vista.getModeloEstadisticas();
         modelo.setRowCount(0);
-        if (gestor != null) {
-            for (Proceso proceso : gestor.getProcesosRegistrados()) {
+        DefaultTableModel historial = vista.getModeloHistorial();
+        historial.setRowCount(0);
+        vista.mostrarResumenCorrida(" ");
+        if (gestor == null) {
+            return;
+        }
+        if (!gestor.getProcesosRegistrados().isEmpty()) {
+            ResultadoCorrida actual = gestor.getCorridaActual();
+            for (Proceso proceso : actual.getProcesos()) {
                 BCP bcp = proceso.getBCP();
-                String retorno = "-";
-                String razon = "-";
-                if (bcp.getTiempoFinal() >= 0) {
-                    int tr = bcp.getTiempoFinal() - bcp.getLlegada();
-                    retorno = String.valueOf(tr);
-                    if (bcp.getTiempoEmpleadoSegundos() > 0) {
-                        razon = String.format("%.2f", (double) tr / bcp.getTiempoEmpleadoSegundos());
-                    }
-                }
                 modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(),
                     formatearInstante(bcp.getTiempoInicio()), formatearInstante(bcp.getTiempoFinal()),
-                    bcp.getTiempoEmpleadoSegundos(), retorno, razon});
+                    bcp.getTiempoEmpleadoSegundos(), formatearInstante(actual.calcularRetorno(proceso)),
+                    formatearDecimal(actual.calcularRazonRetorno(proceso))});
             }
+            vista.mostrarResumenCorrida("Corrida " + actual.getNumero() + " · Reloj " + gestor.getReloj() + " s · Ocio CPU "
+                    + actual.getSegundosOcio() + " s · Tr promedio " + formatearDecimal(actual.calcularPromedioRetorno())
+                    + " · Tr/Ts promedio " + formatearDecimal(actual.calcularPromedioRazon()));
         }
+        for (ResultadoCorrida corrida : gestor.getHistorial()) {
+            Planificador planificador = corrida.getPlanificador();
+            historial.addRow(new Object[]{corrida.getNumero(),
+                describirAlgoritmo(planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB()),
+                corrida.getAsignador().getTipoAsignacion(), corrida.getProcesos().size(), corrida.getTiempoFinal(),
+                corrida.getSegundosOcio(), formatearDecimal(corrida.calcularPromedioRetorno()),
+                formatearDecimal(corrida.calcularPromedioRazon())});
+        }
+    }
+
+    /**
+     * Presenta un valor decimal con dos cifras.
+     *
+     * @param valor valor calculado, o -1.
+     * @return el valor con dos decimales, o "-" si no aplica.
+     */
+    private String formatearDecimal(double valor) {
+        if (valor < 0) {
+            return "-";
+        }
+        return String.format("%.2f", valor);
     }
 
     /**
@@ -633,7 +699,9 @@ public class Controlador {
         vista.getBtnPasoAPaso().setEnabled(ejecutable && !modoAutomatico && !pasoEnCurso);
         vista.getBtnCargarArchivo().setEnabled(!pasoEnCurso);
         vista.getBtnLimpiar().setEnabled(hayProcesosRegistrados && !pasoEnCurso && (!modoAutomatico || !ejecutable));
-        vista.setConfiguracionHabilitada(!hayProcesosRegistrados);
+        boolean terminada = hayProcesosRegistrados && gestor.estaCorridaTerminada();
+        vista.getBtnNuevaCorrida().setEnabled(terminada && !pasoEnCurso);
+        vista.setConfiguracionHabilitada(!hayProcesosRegistrados || terminada);
         vista.setTrabajosEditables(hayProcesosRegistrados && gestor.puedeEditarTrabajos());
     }
 
