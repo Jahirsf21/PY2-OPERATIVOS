@@ -28,6 +28,7 @@ public class GestorProcesos {
     private boolean corridaIniciada;
     private int quantumUsado;
     private List<ResultadoCorrida> historial;
+    private List<Nucleo> nucleos;
 
     /**
      * Construye los recursos de la simulación.
