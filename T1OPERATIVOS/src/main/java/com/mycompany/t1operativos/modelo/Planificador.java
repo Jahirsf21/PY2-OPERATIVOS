@@ -19,6 +19,8 @@ public class Planificador {
     private String ultimoSorteo;
     private int[] quantumsNivel;
     private int limiteEspera;
+    private int tasaA;
+    private int tasaB;
 
     /**
      * Construye una cola vacía de procesos listos para CPU.
@@ -27,8 +29,10 @@ public class Planificador {
      * @param quantum segundos por turno en RR.
      * @param quantumsNivel quantum de cada nivel de MLFQ, de 2 a 5 niveles.
      * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
+     * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
+     * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
      */
-    public Planificador(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera) {
+    public Planificador(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
         if (!esAlgoritmoDisponible(algoritmo)) {
             throw new IllegalArgumentException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -46,6 +50,12 @@ public class Planificador {
         if (limiteEspera < 1) {
             throw new IllegalArgumentException("El límite de espera debe ser un entero mayor o igual a 1.");
         }
+        if (tasaA < 1 || tasaB < 0) {
+            throw new IllegalArgumentException("La tasa A debe ser un entero mayor o igual a 1 y la tasa B mayor o igual a 0.");
+        }
+        if (tasaB >= tasaA) {
+            throw new IllegalArgumentException("La tasa B debe ser menor que la tasa A.");
+        }
         colaListos = new ArrayList<>();
         this.algoritmo = algoritmo;
         this.quantum = quantum;
@@ -53,6 +63,8 @@ public class Planificador {
         this.ultimoSorteo = null;
         this.quantumsNivel = quantumsNivel;
         this.limiteEspera = limiteEspera;
+        this.tasaA = tasaA;
+        this.tasaB = tasaB;
     }
 
     /**
@@ -62,7 +74,7 @@ public class Planificador {
      * @return true si puede seleccionarse.
      */
     public static boolean esAlgoritmoDisponible(String algoritmo) {
-        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo) || "MLFQ".equals(algoritmo);
+        boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo) || "MLFQ".equals(algoritmo) || "SRR".equals(algoritmo);
         return disponible;
     }
 
@@ -100,6 +112,24 @@ public class Planificador {
      */
     public int getLimiteEspera() {
         return limiteEspera;
+    }
+
+    /**
+     * Obtiene el aumento de prioridad por segundo de los nuevos en SRR.
+     *
+     * @return tasa A.
+     */
+    public int getTasaA() {
+        return tasaA;
+    }
+
+    /**
+     * Obtiene el aumento de prioridad por segundo de los aceptados en SRR.
+     *
+     * @return tasa B.
+     */
+    public int getTasaB() {
+        return tasaB;
     }
 
     /**
@@ -182,6 +212,8 @@ public class Planificador {
                 return GuaranteedScheduling(instante);
             case "MLFQ":
                 return MLFQ();
+            case "SRR":
+                return SRR();
             default:
                 throw new IllegalStateException("Algoritmo de planificación no disponible: " + algoritmo + ".");
         }
@@ -246,8 +278,8 @@ public class Planificador {
     }
 
     /**
-     * Compara dos procesos según el algoritmo: mayor razón de respuesta en HRRN y menor razón de uso en
-     * GuaranteedScheduling; empata por menor llegada y luego por menor ID.
+     * Compara dos procesos según el algoritmo: mayor razón de respuesta en HRRN, menor razón de uso en
+     * GuaranteedScheduling y mayor prioridad en SRR; empata por menor llegada y luego por menor ID.
      *
      * @param a proceso candidato.
      * @param b proceso elegido hasta el momento.
@@ -270,6 +302,10 @@ public class Planificador {
                 valorA = calcularRazonGS(bcpA, instante, participantes);
                 valorB = calcularRazonGS(bcpB, instante, participantes);
                 mayorPrimero = false;
+                break;
+            case "SRR":
+                valorA = a.getPrioridad();
+                valorB = b.getPrioridad();
                 break;
         }
 
@@ -410,6 +446,89 @@ public class Planificador {
     }
 
     /**
+     * Busca el primer proceso aceptado de la cola.
+     *
+     * @return posición del proceso elegido.
+     */
+    private int SRR() {
+        for (int i = 0; i < colaListos.size(); i++) {
+            if (colaListos.get(i).estaAceptado()) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Aumenta la prioridad de SRR: los nuevos según la tasa A y los aceptados, incluido el actual, según la tasa B.
+     *
+     * @param actual proceso que tiene la CPU, o null.
+     */
+    public void aumentarPrioridades(Proceso actual) {
+        if ("SRR".equals(algoritmo)) {
+            for (Proceso listo : colaListos) {
+                if (listo.estaAceptado()) {
+                    listo.setPrioridad(listo.getPrioridad() + tasaB);
+                } else {
+                    listo.setPrioridad(listo.getPrioridad() + tasaA);
+                }
+            }
+            if (actual != null) {
+                actual.setPrioridad(actual.getPrioridad() + tasaB);
+            }
+        }
+    }
+
+    /**
+     * Acepta en SRR a los nuevos cuya prioridad alcanza la menor de los aceptados; si no hay aceptados,
+     * acepta al nuevo de mayor prioridad. Los aceptados pasan al final de la cola.
+     *
+     * @param actual proceso que tiene la CPU, o null.
+     * @return true si algún proceso fue aceptado.
+     */
+    public boolean aceptarNuevos(Proceso actual) {
+        boolean acepto = false;
+        if ("SRR".equals(algoritmo)) {
+            boolean hayAceptados = false;
+            int menorPrioridad = 0;
+            if (actual != null) {
+                hayAceptados = true;
+                menorPrioridad = actual.getPrioridad();
+            }
+            for (Proceso listo : colaListos) {
+                if (listo.estaAceptado() && (!hayAceptados || listo.getPrioridad() < menorPrioridad)) {
+                    hayAceptados = true;
+                    menorPrioridad = listo.getPrioridad();
+                }
+            }
+            boolean buscarMas = true;
+            while (buscarMas) {
+                int elegido = -1;
+                for (int i = 0; i < colaListos.size(); i++) {
+                    Proceso candidato = colaListos.get(i);
+                    if (!candidato.estaAceptado() && (!hayAceptados || candidato.getPrioridad() >= menorPrioridad)) {
+                        if (elegido < 0 || tienePrioridad(candidato, colaListos.get(elegido), 0, 0)) {
+                            elegido = i;
+                        }
+                    }
+                }
+                if (elegido < 0) {
+                    buscarMas = false;
+                } else {
+                    Proceso nuevo = colaListos.remove(elegido);
+                    nuevo.setAceptado(true);
+                    colaListos.add(nuevo);
+                    acepto = true;
+                    if (!hayAceptados) {
+                        buscarMas = false;
+                    }
+                }
+            }
+        }
+        return acepto;
+    }
+
+    /**
      * Busca el menor tiempo restante; empata por menor llegada y luego por menor ID.
      *
      * @return posición del proceso elegido.
@@ -477,12 +596,11 @@ public class Planificador {
      * @return true si debe expropiarse.
      */
     public boolean debeExpropiar(Proceso actual, int instante) {
-        boolean expropiar = false;
         if ("SRT".equals(algoritmo) && actual != null) {
             int restanteActual = actual.getBCP().getRestante();
             for (Proceso listo : colaListos) {
                 if (listo.getBCP().getRestante() < restanteActual) {
-                    expropiar = true;
+                    return true;
                 }
             }
         }
@@ -491,23 +609,23 @@ public class Planificador {
             double razonActual = calcularRazonGS(actual.getBCP(), instante, participantes);
             for (Proceso listo : colaListos) {
                 if (calcularRazonGS(listo.getBCP(), instante, participantes) < razonActual) {
-                    expropiar = true;
+                    return true;
                 }
             }
         }
         if ("MLFQ".equals(algoritmo) && actual != null) {
             for (Proceso listo : colaListos) {
                 if (listo.getNivel() < actual.getNivel()) {
-                    expropiar = true;
+                    return true;
                 }
             }
         }
-        return expropiar;
+        return false;
     }
 
     /**
      * Indica si el proceso actual debe dejar la CPU por quantum.
-     * RR y Lottery expropian cuando su turno alcanza el quantum configurado.
+     * RR, Lottery y SRR expropian cuando su turno alcanza el quantum configurado.
      * MLFQ expropia cuando su turno alcanza el quantum de su nivel.
      *
      * @param actual proceso que tiene la CPU.
@@ -515,11 +633,25 @@ public class Planificador {
      * @return true si debe expropiarse.
      */
     public boolean agotoQuantum(Proceso actual, int quantumUsado) {
-        boolean agotado = ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) && quantumUsado >= quantum;
+        boolean agotado = ("RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "SRR".equals(algoritmo)) && quantumUsado >= quantum;
         if ("MLFQ".equals(algoritmo)) {
             agotado = quantumUsado >= quantumsNivel[actual.getNivel()];
         }
         return agotado;
+    }
+
+    /**
+     * Comprueba si hay listos esperando turno; en SRR solo cuentan los aceptados.
+     *
+     * @return true si alguno espera su turno.
+     */
+    public boolean hayAceptadosEsperando() {
+        for (Proceso listo : colaListos) {
+            if (!"SRR".equals(algoritmo) || listo.estaAceptado()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

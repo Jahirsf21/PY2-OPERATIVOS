@@ -106,7 +106,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || destino.getProcesosRegistrados().isEmpty()) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -395,7 +395,15 @@ public class Controlador {
                     if ("MLFQ".equals(gestor.getAlgoritmo())) {
                         nivel = proceso.getNivel() + " (" + gestor.getQuantumUsado(proceso) + "/" + gestor.getQuantumsNivel()[proceso.getNivel()] + ")";
                     }
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante(), razon, nivel});
+                    String srr = "";
+                    if ("SRR".equals(gestor.getAlgoritmo())) {
+                        if (proceso.estaAceptado()) {
+                            srr = "A:" + proceso.getPrioridad();
+                        } else {
+                            srr = "N:" + proceso.getPrioridad();
+                        }
+                    }
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante(), razon, nivel, srr});
                 }
             }
         }
@@ -411,6 +419,8 @@ public class Controlador {
         int quantum = vista.getQuantumSeleccionado();
         int[] quantumsNivel = vista.getQuantumsNivelSeleccionados();
         int limiteEspera = vista.getLimiteEsperaSeleccionado();
+        int tasaA = vista.getTasaASeleccionada();
+        int tasaB = vista.getTasaBSeleccionada();
         String sorteo = null;
         if (gestor != null && !gestor.getProcesosRegistrados().isEmpty()) {
             reloj = gestor.getReloj();
@@ -419,6 +429,8 @@ public class Controlador {
             quantum = gestor.getQuantum();
             quantumsNivel = gestor.getQuantumsNivel();
             limiteEspera = gestor.getLimiteEspera();
+            tasaA = gestor.getTasaA();
+            tasaB = gestor.getTasaB();
             sorteo = gestor.getUltimoSorteo();
         }
         String texto = algoritmo;
@@ -434,6 +446,9 @@ public class Controlador {
                 niveles = niveles + quantumsNivel[i];
             }
             texto = texto + " (q = " + niveles + "; límite de espera " + limiteEspera + ")";
+        }
+        if ("SRR".equals(algoritmo)) {
+            texto = texto + " (q = " + quantum + "; A = " + tasaA + ", B = " + tasaB + ")";
         }
         if (sorteo != null) {
             texto = texto + "    Sorteo: " + sorteo;

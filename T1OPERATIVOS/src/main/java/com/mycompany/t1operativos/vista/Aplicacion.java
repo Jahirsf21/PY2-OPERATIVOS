@@ -92,6 +92,10 @@ public class Aplicacion extends JFrame {
     private JTextField selectorQuantumsNivel;
     /** Segundos de espera para subir de nivel en MLFQ. */
     private JSpinner selectorLimiteEspera;
+    /** Tasa de aumento de prioridad de los nuevos en SRR. */
+    private JSpinner selectorTasaA;
+    /** Tasa de aumento de prioridad de los aceptados en SRR. */
+    private JSpinner selectorTasaB;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
@@ -245,7 +249,7 @@ public class Aplicacion extends JFrame {
         EstiloUI.estilizarSpinner(selectorMemoria);
         EstiloUI.estilizarSpinner(selectorDisco);
         EstiloUI.estilizarSpinner(selectorMemoriaVirtual);
-        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery", "GuaranteedScheduling", "MLFQ"});
+        selectorAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SPN", "Prioridad", "HRRN", "SRT", "RR", "Lottery", "GuaranteedScheduling", "MLFQ", "SRR"});
         EstiloUI.estilizarCombo(selectorAlgoritmo);
         selectorAlgoritmo.setPreferredSize(new Dimension(130, 34));
         selectorQuantum = new JSpinner(new SpinnerNumberModel(1, 1, null, 1));
@@ -261,6 +265,12 @@ public class Aplicacion extends JFrame {
         selectorLimiteEspera = new JSpinner(new SpinnerNumberModel(5, 1, null, 1));
         EstiloUI.estilizarSpinner(selectorLimiteEspera);
         selectorLimiteEspera.setEnabled(false);
+        selectorTasaA = new JSpinner(new SpinnerNumberModel(2, 1, null, 1));
+        EstiloUI.estilizarSpinner(selectorTasaA);
+        selectorTasaA.setEnabled(false);
+        selectorTasaB = new JSpinner(new SpinnerNumberModel(1, 0, null, 1));
+        EstiloUI.estilizarSpinner(selectorTasaB);
+        selectorTasaB.setEnabled(false);
 
         lblDistribucionMemoria = new JLabel();
         lblDistribucionMemoria.setFont(EstiloUI.FUENTE_ETIQUETA);
@@ -292,13 +302,19 @@ public class Aplicacion extends JFrame {
                 "Política para elegir el siguiente proceso.", selectorAlgoritmo));
         tarjetaPlanificacion.add(Box.createVerticalStrut(10));
         tarjetaPlanificacion.add(crearFilaCampo("Quantum",
-                "Segundos por turno en RR y Lottery.", selectorQuantum));
+                "Segundos por turno en RR, Lottery y SRR.", selectorQuantum));
         tarjetaPlanificacion.add(Box.createVerticalStrut(10));
         tarjetaPlanificacion.add(crearFilaCampo("Quantums por Nivel de Multilevel Feedback Queue",
                 "Quantum de cada cola separados por comas (2 a 5 niveles).", selectorQuantumsNivel));
         tarjetaPlanificacion.add(Box.createVerticalStrut(10));
         tarjetaPlanificacion.add(crearFilaCampo("Límite de espera",
                 "Segundos de espera para subir de nivel en MLFQ.", selectorLimiteEspera));
+        tarjetaPlanificacion.add(Box.createVerticalStrut(10));
+        tarjetaPlanificacion.add(crearFilaCampo("Tasa A",
+                "Aumento de prioridad por segundo de los nuevos en SRR.", selectorTasaA));
+        tarjetaPlanificacion.add(Box.createVerticalStrut(10));
+        tarjetaPlanificacion.add(crearFilaCampo("Tasa B",
+                "Aumento de prioridad por segundo de los aceptados en SRR (menor que A).", selectorTasaB));
 
         JPanel cuerpo = new JPanel(new GridBagLayout());
         cuerpo.setBackground(EstiloUI.FONDO);
@@ -423,6 +439,9 @@ public class Aplicacion extends JFrame {
             getQuantumSeleccionado();
             getQuantumsNivelSeleccionados();
             getLimiteEsperaSeleccionado();
+            if (getTasaBSeleccionada() >= getTasaASeleccionada()) {
+                throw new IllegalArgumentException("La tasa B debe ser menor que la tasa A.");
+            }
             ventanaConfiguracion.setVisible(false);
             firePropertyChange("Configuración confirmada", null, Boolean.TRUE);
         } catch (IllegalArgumentException ex) {
@@ -583,7 +602,7 @@ public class Aplicacion extends JFrame {
      * @return panel de procesos y estados.
      */
     private JPanel crearPanelProcesos() {
-        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante", "Razón", "Nivel"}, 0) {
+        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante", "Razón", "Nivel", "SRR"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -1015,16 +1034,19 @@ public class Aplicacion extends JFrame {
         selectorQuantum.setEnabled(habilitado && usaQuantum());
         selectorQuantumsNivel.setEnabled(habilitado && esMLFQ);
         selectorLimiteEspera.setEnabled(habilitado && esMLFQ);
+        boolean esSRR = "SRR".equals(getAlgoritmoSeleccionado());
+        selectorTasaA.setEnabled(habilitado && esSRR);
+        selectorTasaB.setEnabled(habilitado && esSRR);
     }
 
     /**
      * Indica si el algoritmo elegido usa quantum.
      *
-     * @return true para RR y Lottery.
+     * @return true para RR, Lottery y SRR.
      */
     private boolean usaQuantum() {
         String algoritmo = getAlgoritmoSeleccionado();
-        boolean usa = "RR".equals(algoritmo) || "Lottery".equals(algoritmo);
+        boolean usa = "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "SRR".equals(algoritmo);
         return usa;
     }
 
@@ -1087,6 +1109,34 @@ public class Aplicacion extends JFrame {
             throw new IllegalArgumentException("El límite de espera debe ser un entero mayor o igual a 1.");
         }
         return (Integer) selectorLimiteEspera.getValue();
+    }
+
+    /**
+     * Confirma y obtiene el aumento de prioridad por segundo de los nuevos en SRR.
+     *
+     * @return tasa A.
+     */
+    public int getTasaASeleccionada() {
+        try {
+            selectorTasaA.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("La tasa A debe ser un entero mayor o igual a 1.");
+        }
+        return (Integer) selectorTasaA.getValue();
+    }
+
+    /**
+     * Confirma y obtiene el aumento de prioridad por segundo de los aceptados en SRR.
+     *
+     * @return tasa B.
+     */
+    public int getTasaBSeleccionada() {
+        try {
+            selectorTasaB.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("La tasa B debe ser un entero mayor o igual a 0.");
+        }
+        return (Integer) selectorTasaB.getValue();
     }
 
     // ================================================================

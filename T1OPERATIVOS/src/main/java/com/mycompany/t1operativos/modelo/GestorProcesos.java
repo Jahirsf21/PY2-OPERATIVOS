@@ -37,9 +37,11 @@ public class GestorProcesos {
      * @param quantum segundos por turno en RR.
      * @param quantumsNivel quantum de cada nivel de MLFQ.
      * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
+     * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
+     * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
      */
-    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera) {
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera);
+    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
     }
 
     /**
@@ -94,7 +96,7 @@ public class GestorProcesos {
         if (agotado) {
             planificador.bajarNivel(getActual());
         }
-        if (agotado && planificador.hayProcesosListos()) {
+        if (agotado && planificador.hayAceptadosEsperando()) {
             expropiarActual();
             cambio = true;
             agotado = false;
@@ -104,6 +106,9 @@ public class GestorProcesos {
         }
         admitirLlegadas();
         if (admitirEnMemoria()) {
+            cambio = true;
+        }
+        if (planificador.aceptarNuevos(getActual())) {
             cambio = true;
         }
         if (agotado) {
@@ -143,6 +148,7 @@ public class GestorProcesos {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
         planificador.contarEspera();
+        planificador.aumentarPrioridades(getActual());
         if (getActual() == null) {
             segundosOcio++;
             reloj++;
@@ -183,7 +189,7 @@ public class GestorProcesos {
      * Reinicia la simulación conservando capacidades.
      */
     public void limpiar() {
-        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera());
+        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB());
     }
 
     /**
@@ -274,6 +280,24 @@ public class GestorProcesos {
      */
     public int getLimiteEspera() {
         return planificador.getLimiteEspera();
+    }
+
+    /**
+     * Obtiene el aumento de prioridad por segundo de los nuevos en SRR.
+     *
+     * @return tasa A.
+     */
+    public int getTasaA() {
+        return planificador.getTasaA();
+    }
+
+    /**
+     * Obtiene el aumento de prioridad por segundo de los aceptados en SRR.
+     *
+     * @return tasa B.
+     */
+    public int getTasaB() {
+        return planificador.getTasaB();
     }
 
     /**
@@ -723,8 +747,10 @@ public class GestorProcesos {
      * @param quantum segundos por turno en RR.
      * @param quantumsNivel quantum de cada nivel de MLFQ.
      * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
+     * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
+     * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
      */
-    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera) {
+    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
         if (tamañoMemoria < 128) {
             throw new IllegalArgumentException("La RAM debe ser al menos 128 posiciones.");
         }
@@ -736,7 +762,7 @@ public class GestorProcesos {
         Memoria nuevaMemoria = new Memoria(tamañoMemoria, tamañoKernel);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
-        Planificador nuevoPlanificador = new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera);
+        Planificador nuevoPlanificador = new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
         Despachador nuevoDespachador = new Despachador(new CPU());
         memoria = nuevaMemoria;
         disco = nuevoDisco;

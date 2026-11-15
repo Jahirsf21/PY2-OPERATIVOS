@@ -13,6 +13,8 @@ public class Proceso {
     private int nivel;
     private int quantumUsado;
     private int tiempoEspera;
+    private int prioridad;
+    private boolean aceptado;
 
     /**
      * Construye un trabajo sin memoria asignada.
@@ -30,6 +32,8 @@ public class Proceso {
         this.nivel = 0;
         this.quantumUsado = 0;
         this.tiempoEspera = 0;
+        this.prioridad = 0;
+        this.aceptado = false;
     }
 
     /**
@@ -135,6 +139,45 @@ public class Proceso {
             throw new IllegalArgumentException("El tiempo de espera no puede ser negativo.");
         }
         this.tiempoEspera = tiempoEspera;
+    }
+
+    /**
+     * Obtiene la prioridad de SRR del proceso.
+     *
+     * @return prioridad acumulada.
+     */
+    public int getPrioridad() {
+        return prioridad;
+    }
+
+    /**
+     * Cambia la prioridad de SRR del proceso.
+     *
+     * @param prioridad prioridad no negativa.
+     */
+    public void setPrioridad(int prioridad) {
+        if (prioridad < 0) {
+            throw new IllegalArgumentException("La prioridad no puede ser negativa.");
+        }
+        this.prioridad = prioridad;
+    }
+
+    /**
+     * Indica si el proceso está en la lista de aceptados de SRR.
+     *
+     * @return true si está aceptado.
+     */
+    public boolean estaAceptado() {
+        return aceptado;
+    }
+
+    /**
+     * Marca si el proceso pasa a la lista de aceptados de SRR.
+     *
+     * @param aceptado true si pasa a aceptado.
+     */
+    public void setAceptado(boolean aceptado) {
+        this.aceptado = aceptado;
     }
 
     /**
