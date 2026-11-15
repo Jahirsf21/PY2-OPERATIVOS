@@ -5,6 +5,7 @@ import com.mycompany.t1operativos.modelo.BCP;
 import com.mycompany.t1operativos.modelo.Disco;
 import com.mycompany.t1operativos.modelo.GestorProcesos;
 import com.mycompany.t1operativos.modelo.Memoria;
+import com.mycompany.t1operativos.modelo.Nucleo;
 import com.mycompany.t1operativos.modelo.Parser;
 import com.mycompany.t1operativos.modelo.Planificador;
 import com.mycompany.t1operativos.modelo.Proceso;
@@ -94,6 +95,7 @@ public class Controlador {
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
         vista.getBtnNuevaCorrida().addActionListener(e -> nuevaCorrida());
+        vista.getSelectorCPUBCP().addActionListener(e -> actualizarCPUSeleccionada());
         vista.getModeloTrabajos().addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 1 || e.getColumn() == 3 || e.getColumn() == 4)) {
                 cambiarDatoTrabajo(e.getFirstRow(), e.getColumn());
@@ -327,6 +329,11 @@ public class Controlador {
      * Actualiza los datos de la vista.
      */
     private void actualizarVista() {
+        int cantidadCPU = 1;
+        if (gestor != null) {
+            cantidadCPU = gestor.getNucleos().size();
+        }
+        vista.setCantidadCPUBCP(cantidadCPU);
         actualizarReloj();
         actualizarTablaMemoria();
         actualizarTablaDisco();
@@ -336,6 +343,18 @@ public class Controlador {
         actualizarBCP();
         actualizarSeleccionProximaInstruccion();
         actualizarControles();
+    }
+
+    /**
+     * Muestra el BCP, la próxima instrucción y el sorteo de la CPU elegida en el panel BCP.
+     */
+    private void actualizarCPUSeleccionada() {
+        if (gestor == null) {
+            return;
+        }
+        actualizarReloj();
+        actualizarBCP();
+        actualizarSeleccionProximaInstruccion();
     }
 
     /**
@@ -506,7 +525,7 @@ public class Controlador {
      */
     private void actualizarReloj() {
         int reloj = 0;
-        int ocio = 0;
+        String ocio = "0 s";
         String algoritmo = vista.getAlgoritmoSeleccionado();
         int quantum = vista.getQuantumSeleccionado();
         int[] quantumsNivel = vista.getQuantumsNivelSeleccionados();
@@ -516,20 +535,41 @@ public class Controlador {
         String sorteo = null;
         if (gestor != null && !gestor.getProcesosRegistrados().isEmpty()) {
             reloj = gestor.getReloj();
-            ocio = gestor.getSegundosOcio();
+            ocio = describirOcio();
             algoritmo = gestor.getAlgoritmo();
             quantum = gestor.getQuantum();
             quantumsNivel = gestor.getQuantumsNivel();
             limiteEspera = gestor.getLimiteEspera();
             tasaA = gestor.getTasaA();
             tasaB = gestor.getTasaB();
-            sorteo = gestor.getUltimoSorteo();
+            sorteo = gestor.getUltimoSorteo(vista.getCPUBCPSeleccionada());
         }
         String texto = describirAlgoritmo(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
-        if (sorteo != null) {
+        if (sorteo != null && gestor.getNucleos().size() > 1) {
+            texto = texto + "    Sorteo CPU " + vista.getCPUBCPSeleccionada() + ": " + sorteo;
+        } else if (sorteo != null) {
             texto = texto + "    Sorteo: " + sorteo;
         }
-        vista.mostrarReloj("Algoritmo: " + texto + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio + " s");
+        vista.mostrarReloj("Algoritmo: " + texto + "    Reloj: " + reloj + " s    Ocio CPU: " + ocio);
+    }
+
+    /**
+     * Arma el ocio de la simulación: total con una CPU o el de cada CPU con varias.
+     *
+     * @return texto como «2 s» o «1 = 0 s, 2 = 2 s».
+     */
+    private String describirOcio() {
+        if (gestor.getNucleos().size() == 1) {
+            return gestor.getSegundosOcio() + " s";
+        }
+        String texto = "";
+        for (Nucleo nucleo : gestor.getNucleos()) {
+            if (!texto.isEmpty()) {
+                texto = texto + ", ";
+            }
+            texto = texto + nucleo.getNumero() + " = " + nucleo.getSegundosOcio() + " s";
+        }
+        return texto;
     }
 
     /**
@@ -631,7 +671,7 @@ public class Controlador {
     private void actualizarBCP() {
         Proceso proceso = null;
         if (gestor != null) {
-            proceso = gestor.getActual();
+            proceso = gestor.getActual(vista.getCPUBCPSeleccionada());
         }
         if (proceso == null) {
             vista.mostrarBCP("");
@@ -679,12 +719,12 @@ public class Controlador {
     private void actualizarSeleccionProximaInstruccion() {
         Proceso actual = null;
         if (gestor != null) {
-            actual = gestor.getActual();
+            actual = gestor.getActual(vista.getCPUBCPSeleccionada());
         }
         if (actual == null) {
             vista.limpiarSeleccionTablas();
         } else {
-            vista.seleccionarProximaInstruccion(gestor.getCPU().getPc());
+            vista.seleccionarProximaInstruccion(gestor.getCPU(vista.getCPUBCPSeleccionada()).getPc());
         }
     }
 

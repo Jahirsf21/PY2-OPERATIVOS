@@ -345,21 +345,23 @@ public class GestorProcesos {
     }
 
     /**
-     * Obtiene la CPU 1.
+     * Obtiene una CPU del simulador.
      *
-     * @return CPU del despachador de la CPU 1.
+     * @param numero número de la CPU, desde 1.
+     * @return CPU del despachador de ese núcleo.
      */
-    public CPU getCPU() {
-        return nucleos.get(0).getDespachador().getCPU();
+    public CPU getCPU(int numero) {
+        return nucleos.get(numero - 1).getDespachador().getCPU();
     }
 
     /**
-     * Obtiene el proceso que tiene la CPU 1.
+     * Obtiene el proceso que tiene una CPU.
      *
-     * @return proceso actual, o null.
+     * @param numero número de la CPU, desde 1.
+     * @return proceso actual de esa CPU, o null.
      */
-    public Proceso getActual() {
-        return nucleos.get(0).getDespachador().getActual();
+    public Proceso getActual(int numero) {
+        return nucleos.get(numero - 1).getDespachador().getActual();
     }
 
     /**
@@ -467,12 +469,13 @@ public class GestorProcesos {
     }
 
     /**
-     * Obtiene el resultado del último sorteo de Lottery.
+     * Obtiene el resultado del último sorteo de Lottery en una CPU.
      *
+     * @param numero número de la CPU, desde 1.
      * @return boleto, total y ganador, o null si no hubo sorteo.
      */
-    public String getUltimoSorteo() {
-        return nucleos.get(0).getPlanificador().getUltimoSorteo();
+    public String getUltimoSorteo(int numero) {
+        return nucleos.get(numero - 1).getPlanificador().getUltimoSorteo();
     }
 
     /**

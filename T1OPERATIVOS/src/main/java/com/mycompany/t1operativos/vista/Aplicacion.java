@@ -104,6 +104,10 @@ public class Aplicacion extends JFrame {
     private JSpinner selectorTasaB;
     /** Cantidad de CPU del simulador. */
     private JSpinner selectorCantidadCPU;
+    /** CPU cuyo BCP se muestra. */
+    private JComboBox<String> selectorCPUBCP;
+    /** Fila del selector de CPU en el panel BCP. */
+    private JPanel filaCPUBCP;
     /** Tipo de asignación de la zona de usuario. */
     private JComboBox<String> selectorTipoAsignacion;
     /** Cantidad de particiones fijas iguales. */
@@ -204,13 +208,6 @@ public class Aplicacion extends JFrame {
         btnEstadisticas = EstiloUI.crearBotonSecundario("Estadísticas");
         btnEstadisticas.addActionListener(e -> mostrarEstadisticas());
         panelBotonesAccion.add(btnEstadisticas);
-        panelBotonesAccion.add(Box.createHorizontalStrut(8));
-        lblReloj = EstiloUI.crearPildora("", EstiloUI.PRIMARIO_SUAVE, EstiloUI.PRIMARIO);
-        lblReloj.setFont(EstiloUI.FUENTE_MONO_BOLD);
-        lblReloj.setIcon(EstiloUI.iconoReloj(EstiloUI.PRIMARIO));
-        lblReloj.setIconTextGap(8);
-        lblReloj.setVisible(false);
-        panelBotonesAccion.add(lblReloj);
 
         JPanel panelCargarArchivo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         panelCargarArchivo.setBackground(EstiloUI.FONDO);
@@ -221,6 +218,13 @@ public class Aplicacion extends JFrame {
         btnConfigurarSimulador = EstiloUI.crearBotonSecundario("Configurar Simulador");
         btnConfigurarSimulador.addActionListener(e -> mostrarConfiguracion());
         panelCargarArchivo.add(btnConfigurarSimulador);
+        panelCargarArchivo.add(Box.createHorizontalStrut(8));
+        lblReloj = EstiloUI.crearPildora("", EstiloUI.PRIMARIO_SUAVE, EstiloUI.PRIMARIO);
+        lblReloj.setFont(EstiloUI.FUENTE_MONO_BOLD);
+        lblReloj.setIcon(EstiloUI.iconoReloj(EstiloUI.PRIMARIO));
+        lblReloj.setIconTextGap(8);
+        lblReloj.setVisible(false);
+        panelCargarArchivo.add(lblReloj);
 
         panel.add(panelBotonesAccion);
         panel.add(Box.createVerticalStrut(10));
@@ -802,7 +806,20 @@ public class Aplicacion extends JFrame {
         lblEstadoBCP.setBorder(BorderFactory.createEmptyBorder(3, 10, 3, 10));
         lblEstadoBCP.setVisible(false);
         encabezado.add(lblEstadoBCP, BorderLayout.EAST);
-        panel.add(encabezado, BorderLayout.NORTH);
+        selectorCPUBCP = new JComboBox<>(new String[]{"CPU 1"});
+        EstiloUI.estilizarCombo(selectorCPUBCP);
+        selectorCPUBCP.setPreferredSize(new Dimension(96, 30));
+        filaCPUBCP = new JPanel(new BorderLayout());
+        filaCPUBCP.setBackground(EstiloUI.PANEL);
+        filaCPUBCP.setBorder(BorderFactory.createEmptyBorder(0, 2, 12, 2));
+        filaCPUBCP.add(EstiloUI.crearEtiquetaSecundaria("CPU"), BorderLayout.WEST);
+        filaCPUBCP.add(selectorCPUBCP, BorderLayout.EAST);
+        filaCPUBCP.setVisible(false);
+        JPanel cabecera = new JPanel(new BorderLayout());
+        cabecera.setBackground(EstiloUI.PANEL);
+        cabecera.add(encabezado, BorderLayout.NORTH);
+        cabecera.add(filaCPUBCP, BorderLayout.SOUTH);
+        panel.add(cabecera, BorderLayout.NORTH);
 
         // El texto completo se conserva en un JTextArea para getAreaBCP().
         areaBCP = new JTextArea();
@@ -822,6 +839,47 @@ public class Aplicacion extends JFrame {
 
         mostrarBCPVacio();
         return panel;
+    }
+
+    /**
+     * Obtiene el selector de la CPU cuyo BCP se muestra.
+     *
+     * @return selector de CPU del panel BCP.
+     */
+    public JComboBox<String> getSelectorCPUBCP() {
+        return selectorCPUBCP;
+    }
+
+    /**
+     * Ajusta el selector del panel BCP a la cantidad de CPU; solo se muestra con más de una.
+     *
+     * @param cantidad cantidad de CPU de la simulación.
+     */
+    public void setCantidadCPUBCP(int cantidad) {
+        if (selectorCPUBCP.getItemCount() != cantidad) {
+            int seleccionada = selectorCPUBCP.getSelectedIndex();
+            selectorCPUBCP.removeAllItems();
+            for (int numero = 1; numero <= cantidad; numero++) {
+                selectorCPUBCP.addItem("CPU " + numero);
+            }
+            if (seleccionada >= 0 && seleccionada < cantidad) {
+                selectorCPUBCP.setSelectedIndex(seleccionada);
+            }
+        }
+        filaCPUBCP.setVisible(cantidad > 1);
+    }
+
+    /**
+     * Obtiene la CPU elegida en el panel BCP.
+     *
+     * @return número de la CPU, desde 1.
+     */
+    public int getCPUBCPSeleccionada() {
+        int numero = selectorCPUBCP.getSelectedIndex() + 1;
+        if (numero < 1) {
+            return 1;
+        }
+        return numero;
     }
 
     /**
