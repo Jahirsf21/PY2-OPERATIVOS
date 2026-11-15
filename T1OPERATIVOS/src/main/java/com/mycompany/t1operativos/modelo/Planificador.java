@@ -246,30 +246,47 @@ public class Planificador {
     }
 
     /**
-     * Compara dos procesos por mayor razon de respuesta, empata por menor llegada y luego por menor ID.
+     * Compara dos procesos según el algoritmo: mayor razón de respuesta en HRRN y menor razón de uso en
+     * GuaranteedScheduling; empata por menor llegada y luego por menor ID.
+     *
      * @param a proceso candidato.
      * @param b proceso elegido hasta el momento.
      * @param instante segundo actual del reloj simulado.
+     * @param participantes procesos que comparten la CPU, solo para GuaranteedScheduling.
      * @return true si a debe ir antes que b.
      */
-    private boolean tienePrioridadHRRN(BCP a, BCP b, int instante) {
-        double razonA = calcularRazonHRRN(a, instante);
-        double razonB = calcularRazonHRRN(b, instante);
+    private boolean tienePrioridad(Proceso a, Proceso b, int instante, int participantes) {
+        BCP bcpA = a.getBCP();
+        BCP bcpB = b.getBCP();
+        double valorA = 0;
+        double valorB = 0;
+        boolean mayorPrimero = true;
+        switch (algoritmo) {
+            case "HRRN":
+                valorA = calcularRazonHRRN(bcpA, instante);
+                valorB = calcularRazonHRRN(bcpB, instante);
+                break;
+            case "GuaranteedScheduling":
+                valorA = calcularRazonGS(bcpA, instante, participantes);
+                valorB = calcularRazonGS(bcpB, instante, participantes);
+                mayorPrimero = false;
+                break;
+        }
 
-        if (razonA > razonB) {
+        if (valorA > valorB) {
+            return mayorPrimero;
+        }
+        if (valorA < valorB) {
+            return !mayorPrimero;
+        }
+        if (bcpA.getLlegada() < bcpB.getLlegada()) {
             return true;
         }
-        if (razonA < razonB) {
-            return false;
-        }
-        if (a.getLlegada() < b.getLlegada()) {
-            return true;
-        }
-        if (a.getLlegada() > b.getLlegada()) {
+        if (bcpA.getLlegada() > bcpB.getLlegada()) {
             return false;
         }
 
-        if (a.getIdProceso() < b.getIdProceso()) {
+        if (bcpA.getIdProceso() < bcpB.getIdProceso()) {
             return true;
         }
         return false;
@@ -283,9 +300,7 @@ public class Planificador {
     private int HRRN(int instante) {
         int elegido = 0;
         for (int i = 1; i < colaListos.size(); i++) {
-            BCP candidato = colaListos.get(i).getBCP();
-            BCP actual = colaListos.get(elegido).getBCP();
-            if (tienePrioridadHRRN(candidato, actual, instante)) {
+            if (tienePrioridad(colaListos.get(i), colaListos.get(elegido), instante, 0)) {
                 elegido = i;
             }
         }
@@ -310,38 +325,6 @@ public class Planificador {
     }
 
     /**
-     * Compara dos procesos por menor razón de uso; empata por menor llegada y luego por menor ID.
-     *
-     * @param a proceso candidato.
-     * @param b proceso elegido hasta el momento.
-     * @param instante segundo actual del reloj simulado.
-     * @param participantes procesos que comparten la CPU.
-     * @return true si a debe ir antes que b.
-     */
-    private boolean tienePrioridadGS(BCP a, BCP b, int instante, int participantes) {
-        double razonA = calcularRazonGS(a, instante, participantes);
-        double razonB = calcularRazonGS(b, instante, participantes);
-
-        if (razonA < razonB) {
-            return true;
-        }
-        if (razonA > razonB) {
-            return false;
-        }
-        if (a.getLlegada() < b.getLlegada()) {
-            return true;
-        }
-        if (a.getLlegada() > b.getLlegada()) {
-            return false;
-        }
-
-        if (a.getIdProceso() < b.getIdProceso()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Busca la menor razón de uso; empata por menor llegada y luego por menor ID.
      *
      * @param instante segundo actual del reloj simulado.
@@ -351,9 +334,7 @@ public class Planificador {
         int participantes = colaListos.size();
         int elegido = 0;
         for (int i = 1; i < colaListos.size(); i++) {
-            BCP candidato = colaListos.get(i).getBCP();
-            BCP actual = colaListos.get(elegido).getBCP();
-            if (tienePrioridadGS(candidato, actual, instante, participantes)) {
+            if (tienePrioridad(colaListos.get(i), colaListos.get(elegido), instante, participantes)) {
                 elegido = i;
             }
         }
