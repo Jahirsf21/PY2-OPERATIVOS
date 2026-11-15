@@ -463,7 +463,7 @@ public class Controlador {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 BCP bcp = proceso.getBCP();
                 if ("NUEVO".equals(bcp.getEstado())) {
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getBoletos(), bcp.getEstado()});
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getBoletos(), bcp.getCpuActual(), bcp.getEstado()});
                 }
             }
         }
@@ -495,7 +495,7 @@ public class Controlador {
                             srr = "N:" + proceso.getPrioridad();
                         }
                     }
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getEstado(), bcp.getRestante(), razon, nivel, srr});
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getCpuActual(), bcp.getEstado(), bcp.getRestante(), razon, nivel, srr});
                 }
             }
         }

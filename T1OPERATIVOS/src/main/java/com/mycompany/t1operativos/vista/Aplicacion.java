@@ -642,7 +642,7 @@ public class Aplicacion extends JFrame {
      * @return panel de trabajos y estados.
      */
     private JPanel crearPanelTrabajos() {
-        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Prioridad", "Boletos", "Estado"}, 0) {
+        modeloTrabajos = new DefaultTableModel(new Object[]{"Trabajo", "Llegada", "Ráfaga", "Prioridad", "Boletos", "CPU", "Estado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 boolean editable = (col == 1 || col == 3 || col == 4) && trabajosEditables;
@@ -663,7 +663,7 @@ public class Aplicacion extends JFrame {
      * @return panel de procesos y estados.
      */
     private JPanel crearPanelProcesos() {
-        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado", "Restante", "Razón", "Nivel", "SRR"}, 0) {
+        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "CPU", "Estado", "Restante", "Razón", "Nivel", "SRR"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -686,11 +686,15 @@ public class Aplicacion extends JFrame {
         tabla.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tabla.setFillsViewportHeight(true);
         tabla.getTableHeader().setResizingAllowed(false);
-        int ancho = 300 / tabla.getColumnCount();
+        int ancho = 300 / (tabla.getColumnCount() + 1);
         for (int i = 0; i < tabla.getColumnCount(); i++) {
             TableColumn columna = tabla.getColumnModel().getColumn(i);
-            columna.setPreferredWidth(ancho);
-            columna.setWidth(ancho);
+            int anchoColumna = ancho;
+            if ("Estado".equals(tabla.getColumnName(i))) {
+                anchoColumna = ancho * 2;
+            }
+            columna.setPreferredWidth(anchoColumna);
+            columna.setWidth(anchoColumna);
             columna.setResizable(false);
         }
         tabla.setPreferredScrollableViewportSize(new Dimension(tabla.getColumnModel().getTotalColumnWidth(), 100));
