@@ -34,7 +34,7 @@ public class Aplicacion extends JFrame {
      * Coinciden con los que arma el controlador en actualizarBCP().
      */
     private static final String[] CAMPOS_BCP = {
-            "ID", "Estado", "Prioridad", "Boletos", "Posición BCP", "Inicio memoria", "Fin memoria",
+            "ID", "Estado", "Prioridad", "Boletos", "Posición BCP", "Inicio memoria", "Fin memoria", "Tabla de páginas",
             "PC", "IR", "AC",
             "AX", "BX", "CX", "DX", "AH", "AL", "Flag",
             "Pila 1", "Pila 2", "Pila 3", "Pila 4", "Pila 5", "Puntero pila",
@@ -117,6 +117,8 @@ public class Aplicacion extends JFrame {
     private JSpinner selectorCantidadParticiones;
     /** Tamaños de las particiones fijas desiguales. */
     private JTextField selectorTamañosParticion;
+    /** Tamaño de página para Paginación. */
+    private JSpinner selectorTamañoPagina;
     /** Resumen de la asignación de la zona de usuario. */
     private JLabel lblResumenMemoria;
     private JTextArea pantalla;
@@ -326,7 +328,7 @@ public class Aplicacion extends JFrame {
         selectorTasaB.setEnabled(false);
         selectorCantidadCPU = new JSpinner(new SpinnerNumberModel(1, 1, 5, 1));
         EstiloUI.estilizarSpinner(selectorCantidadCPU);
-        selectorTipoAsignacion = new JComboBox<>(new String[]{"Fija iguales", "Fija desiguales", "First Fit", "Next Fit", "Best Fit"});
+        selectorTipoAsignacion = new JComboBox<>(new String[]{"Fija iguales", "Fija desiguales", "First Fit", "Next Fit", "Best Fit", "Paginación"});
         EstiloUI.estilizarCombo(selectorTipoAsignacion);
         selectorTipoAsignacion.setPreferredSize(new Dimension(130, 34));
         selectorTipoAsignacion.setSelectedItem("First Fit");
@@ -340,6 +342,9 @@ public class Aplicacion extends JFrame {
         selectorTamañosParticion.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(EstiloUI.BORDE),
                 BorderFactory.createEmptyBorder(4, 8, 4, 8)));
         selectorTamañosParticion.setEnabled(false);
+        selectorTamañoPagina = new JSpinner(new SpinnerNumberModel(4, 1, null, 1));
+        EstiloUI.estilizarSpinner(selectorTamañoPagina);
+        selectorTamañoPagina.setEnabled(false);
 
         lblDistribucionMemoria = new JLabel();
         lblDistribucionMemoria.setFont(EstiloUI.FUENTE_ETIQUETA);
@@ -366,6 +371,9 @@ public class Aplicacion extends JFrame {
         tarjetaMemoria.add(Box.createVerticalStrut(10));
         tarjetaMemoria.add(crearFilaCampo("Tamaños de particiones",
                 "Particiones desiguales separadas por comas; deben sumar la zona de usuario.", selectorTamañosParticion));
+        tarjetaMemoria.add(Box.createVerticalStrut(10));
+        tarjetaMemoria.add(crearFilaCampo("Tamaño de página",
+                "Posiciones por página y marco; debe dividir exacto la zona de usuario.", selectorTamañoPagina));
 
         // ---- Tarjeta de almacenamiento secundario ----
         JPanel tarjetaDisco = crearTarjetaConfiguracion("Almacenamiento secundario");
@@ -557,12 +565,14 @@ public class Aplicacion extends JFrame {
         tablaMemoria.setCellSelectionEnabled(false);
         tablaMemoria.setRowSelectionAllowed(true);
         tablaMemoria.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tablaMemoria.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tablaMemoria.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         int[] anchosMemoria = {76, 230, 130};
         for (int i = 0; i < anchosMemoria.length; i++) {
             TableColumn columna = tablaMemoria.getColumnModel().getColumn(i);
             columna.setMinWidth(anchosMemoria[i]);
-            columna.setMaxWidth(anchosMemoria[i]);
+            if (i < anchosMemoria.length - 1) {
+                columna.setMaxWidth(anchosMemoria[i]);
+            }
             columna.setPreferredWidth(anchosMemoria[i]);
             columna.setWidth(anchosMemoria[i]);
             columna.setResizable(false);
@@ -1316,10 +1326,11 @@ public class Aplicacion extends JFrame {
         String tipo = getTipoAsignacionSeleccionado();
         selectorCantidadParticiones.setEnabled(habilitado && "Fija iguales".equals(tipo));
         selectorTamañosParticion.setEnabled(habilitado && "Fija desiguales".equals(tipo));
+        selectorTamañoPagina.setEnabled(habilitado && "Paginación".equals(tipo));
     }
 
     /**
-     * Valida que las particiones fijas ocupen exacto la zona de usuario de la RAM elegida.
+     * Valida que las particiones fijas o las páginas ocupen exacto la zona de usuario de la RAM elegida.
      */
     private void validarParticiones() {
         int zonaUsuario = getMemoriaSeleccionada() - getMemoriaSeleccionada() / 4;
@@ -1346,6 +1357,14 @@ public class Aplicacion extends JFrame {
             }
             if (suma != zonaUsuario) {
                 throw new IllegalArgumentException("Las particiones suman " + suma + " y deben sumar exacto la zona de usuario de " + zonaUsuario + " posiciones.");
+            }
+        } else if ("Paginación".equals(tipo)) {
+            int tamañoPagina = getTamañoPaginaSeleccionado();
+            if (tamañoPagina < 1 || tamañoPagina > zonaUsuario) {
+                throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y " + zonaUsuario + ".");
+            }
+            if (zonaUsuario % tamañoPagina != 0) {
+                throw new IllegalArgumentException("La zona de usuario tiene " + zonaUsuario + " posiciones y no se divide exacto en páginas de " + tamañoPagina + ".");
             }
         }
     }
@@ -1500,6 +1519,20 @@ public class Aplicacion extends JFrame {
             throw new IllegalArgumentException("La cantidad de particiones debe ser un entero mayor o igual a 2.");
         }
         return (Integer) selectorCantidadParticiones.getValue();
+    }
+
+    /**
+     * Confirma y obtiene el tamaño de página.
+     *
+     * @return posiciones por página.
+     */
+    public int getTamañoPaginaSeleccionado() {
+        try {
+            selectorTamañoPagina.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("El tamaño de página debe ser un entero mayor o igual a 1.");
+        }
+        return (Integer) selectorTamañoPagina.getValue();
     }
 
     /**
@@ -1765,9 +1798,9 @@ public class Aplicacion extends JFrame {
     public DefaultTableModel getModeloMemoria() { return modeloMemoria; }
 
     /**
-     * Muestra el resumen de la asignación de la zona de usuario.
+     * Muestra el tipo de asignación de la zona de usuario debajo de la RAM.
      *
-     * @param texto resumen de particiones o huecos.
+     * @param texto tipo de asignación.
      */
     public void mostrarResumenMemoria(String texto) {
         lblResumenMemoria.setText(texto);

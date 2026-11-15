@@ -113,7 +113,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || (destino.getProcesosRegistrados().isEmpty() && destino.getHistorial().isEmpty())) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -307,7 +307,7 @@ public class Controlador {
      */
     private void nuevaSimulacion() {
         try {
-            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
+            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado());
             vista.limpiarConsola();
             actualizarVista();
             if (!mensajes.isEmpty()) {
@@ -371,6 +371,18 @@ public class Controlador {
         }
         Memoria memoria = gestor.getMemoria();
         AsignadorMemoria asignador = gestor.getAsignador();
+        boolean paginacion = "Paginación".equals(asignador.getTipoAsignacion());
+        int[] dueños = new int[asignador.getDireccionesInicio().length];
+        int[] paginas = new int[asignador.getDireccionesInicio().length];
+        for (Proceso proceso : gestor.getProcesosRegistrados()) {
+            int[] tabla = proceso.getBCP().getTablaPaginas();
+            if (tabla != null && proceso.getPosicionBCP() >= 0) {
+                for (int pagina = 0; pagina < tabla.length; pagina++) {
+                    dueños[tabla[pagina]] = proceso.getBCP().getIdProceso();
+                    paginas[tabla[pagina]] = pagina;
+                }
+            }
+        }
         for (int posicion = 0; posicion < memoria.getTamañoTotal(); posicion++) {
             String contenido = "";
             String particion = "";
@@ -383,59 +395,16 @@ public class Controlador {
                 }
             }
             int indice = asignador.getParticion(posicion);
-            if (indice >= 0) {
+            if (indice >= 0 && paginacion && dueños[indice] > 0) {
+                particion = "M" + indice + " · P" + dueños[indice] + " pág " + paginas[indice];
+            } else if (indice >= 0 && paginacion) {
+                particion = "M" + indice;
+            } else if (indice >= 0) {
                 particion = "P" + indice;
             }
             modelo.addRow(new Object[]{posicion, contenido, particion});
         }
-        vista.mostrarResumenMemoria(resumirMemoria(memoria, asignador));
-    }
-
-    /**
-     * Arma el resumen de la zona de usuario: particiones ocupadas y fragmentación interna, o huecos libres.
-     *
-     * @param memoria RAM de la simulación.
-     * @param asignador asignador de la zona de usuario.
-     * @return texto del resumen.
-     */
-    private String resumirMemoria(Memoria memoria, AsignadorMemoria asignador) {
-        String texto = "Asignación: " + asignador.getTipoAsignacion();
-        int[] inicios = asignador.getDireccionesInicio();
-        if (inicios.length > 0) {
-            int ocupadas = 0;
-            int fragmentacion = 0;
-            for (int i = 0; i < inicios.length; i++) {
-                if (asignador.estaOcupada(i)) {
-                    ocupadas++;
-                    for (int posicion = inicios[i]; posicion < inicios[i] + asignador.getTamañosParticion()[i]; posicion++) {
-                        if (memoria.leer(posicion) == null) {
-                            fragmentacion++;
-                        }
-                    }
-                }
-            }
-            texto = texto + " · Particiones ocupadas " + ocupadas + " de " + inicios.length + " · Fragmentación interna " + fragmentacion;
-        } else {
-            String huecos = "";
-            int cantidadHuecos = 0;
-            int libres = 0;
-            int tamañoHueco = 0;
-            for (int posicion = memoria.getInicioUsuario(); posicion <= memoria.getTamañoTotal(); posicion++) {
-                if (posicion < memoria.getTamañoTotal() && memoria.leer(posicion) == null) {
-                    tamañoHueco++;
-                } else if (tamañoHueco > 0) {
-                    if (cantidadHuecos > 0) {
-                        huecos = huecos + ", ";
-                    }
-                    huecos = huecos + tamañoHueco;
-                    cantidadHuecos++;
-                    libres = libres + tamañoHueco;
-                    tamañoHueco = 0;
-                }
-            }
-            texto = texto + " · Huecos " + cantidadHuecos + " (" + huecos + ") · Libre " + libres;
-        }
-        return texto;
+        vista.mostrarResumenMemoria("Asignación: " + asignador.getTipoAsignacion());
     }
 
     /**
@@ -718,6 +687,7 @@ public class Controlador {
                 + "\nPosición BCP: " + proceso.getPosicionBCP()
                 + "\nInicio memoria: " + bcp.getInicioMemoria()
                 + "\nFin memoria: " + bcp.getFinMemoria()
+                + "\nTabla de páginas: " + bcp.getTablaPaginasToString()
                 + "\nPC: " + bcp.getPc()
                 + "\nIR: " + bcp.getIrToString()
                 + "\nAC: " + bcp.getAc()
@@ -757,7 +727,8 @@ public class Controlador {
         if (actual == null) {
             vista.limpiarSeleccionTablas();
         } else {
-            vista.seleccionarProximaInstruccion(gestor.getCPU(vista.getCPUBCPSeleccionada()).getPc());
+            int pc = gestor.getCPU(vista.getCPUBCPSeleccionada()).getPc();
+            vista.seleccionarProximaInstruccion(gestor.getAsignador().traducirDireccion(actual.getBCP().getTablaPaginas(), pc));
         }
     }
 

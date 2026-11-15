@@ -33,6 +33,7 @@ public class BCP {
     private int pila5;
     private int punteroPila;
     private int cpuActual;
+    private int[] tablaPaginas;
     private int llegada;
     private int rafaga;
     private int tiempoInicio;
@@ -97,6 +98,7 @@ public class BCP {
         this.pila5 = 0;
         this.punteroPila = -1;
         this.cpuActual = -1;
+        this.tablaPaginas = null;
         this.llegada = llegada;
         this.rafaga = rafaga;
         this.tiempoInicio = -1;
@@ -333,6 +335,43 @@ public class BCP {
      */
     public String getIrToString() {
         return new Parser().traducirInstruccion(ir);
+    }
+
+    /**
+     * Obtiene la tabla de páginas del proceso.
+     *
+     * @return marco de cada página, o null en asignación contigua.
+     */
+    public int[] getTablaPaginas() {
+        return tablaPaginas;
+    }
+
+    /**
+     * Cambia la tabla de páginas del proceso.
+     *
+     * @param tablaPaginas marco de cada página, o null en asignación contigua.
+     */
+    public void setTablaPaginas(int[] tablaPaginas) {
+        this.tablaPaginas = tablaPaginas;
+    }
+
+    /**
+     * Presenta la tabla de páginas como texto.
+     *
+     * @return marcos entre corchetes, como «[0, 4]», o «-» si no hay tabla.
+     */
+    public String getTablaPaginasToString() {
+        if (tablaPaginas == null) {
+            return "-";
+        }
+        String texto = "[";
+        for (int pagina = 0; pagina < tablaPaginas.length; pagina++) {
+            if (pagina > 0) {
+                texto = texto + ", ";
+            }
+            texto = texto + tablaPaginas[pagina];
+        }
+        return texto + "]";
     }
 
     /**

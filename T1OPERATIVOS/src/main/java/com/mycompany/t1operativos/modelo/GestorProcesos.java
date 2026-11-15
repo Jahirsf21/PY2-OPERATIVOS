@@ -43,9 +43,10 @@ public class GestorProcesos {
      * @param tipoAsignacion tipo de asignación de la zona de usuario.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
+     * @param tamañoPagina posiciones de cada página para Paginación.
      */
-    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, cantidadCPU, tipoAsignacion, cantidadParticiones, tamañosParticion);
+    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion, int tamañoPagina) {
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, cantidadCPU, tipoAsignacion, cantidadParticiones, tamañosParticion, tamañoPagina);
         historial = new ArrayList<>();
     }
 
@@ -225,7 +226,7 @@ public class GestorProcesos {
             if (cpu.getPc() < bcp.getInicioMemoria() || cpu.getPc() > bcp.getFinMemoria()) {
                 throw new IllegalStateException("El PC está fuera de los límites del programa.");
             }
-            String[] instruccion = memoria.leer(cpu.getPc());
+            String[] instruccion = memoria.leer(asignador.traducirDireccion(bcp.getTablaPaginas(), cpu.getPc()));
             if (instruccion == null) {
                 throw new IllegalStateException("No existe una instrucción válida en la posición " + cpu.getPc() + ".");
             }
@@ -265,15 +266,16 @@ public class GestorProcesos {
      * @param tipoAsignacion tipo de asignación de la zona de usuario.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
+     * @param tamañoPagina posiciones de cada página para Paginación.
      * @return mensajes de programas que no se pudieron registrar.
      */
-    public List<String> nuevaSimulacion(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+    public List<String> nuevaSimulacion(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion, int tamañoPagina) {
         if (!estaSimulacionTerminada()) {
             throw new IllegalStateException("Solo se inicia una nueva simulación cuando la actual terminó.");
         }
         Disco discoAnterior = disco;
         List<Proceso> procesosAnteriores = procesosRegistrados;
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, cantidadCPU, tipoAsignacion, cantidadParticiones, tamañosParticion);
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, cantidadCPU, tipoAsignacion, cantidadParticiones, tamañosParticion, tamañoPagina);
         List<String> mensajes = new ArrayList<>();
         for (Proceso anterior : procesosAnteriores) {
             String[] entrada = discoAnterior.leer(anterior.getPosicionIndice());
@@ -315,7 +317,7 @@ public class GestorProcesos {
      */
     public void limpiar() {
         Planificador planificador = nucleos.get(0).getPlanificador();
-        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB(), nucleos.size(), asignador.getTipoAsignacion(), asignador.getDireccionesInicio().length, asignador.getTamañosParticion());
+        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB(), nucleos.size(), asignador.getTipoAsignacion(), asignador.getDireccionesInicio().length, asignador.getTamañosParticion(), asignador.getTamañoPagina());
         historial = new ArrayList<>();
     }
 
@@ -781,14 +783,26 @@ public class GestorProcesos {
             if (posicionBCP < 0) {
                 break;
             }
-            int inicioPrograma = asignador.asignar(cantidadInstrucciones);
-            if (inicioPrograma < 0) {
-                break;
+            if ("Paginación".equals(asignador.getTipoAsignacion())) {
+                int[] tablaPaginas = asignador.asignarPaginas(cantidadInstrucciones);
+                if (tablaPaginas == null) {
+                    break;
+                }
+                for (int i = 0; i < cantidadInstrucciones; i++) {
+                    memoria.escribirUsuario(asignador.traducirDireccion(tablaPaginas, i), disco.leer(direccion + i));
+                }
+                bcp.setTablaPaginas(tablaPaginas);
+                bcp.asignarMemoria(0, cantidadInstrucciones - 1);
+            } else {
+                int inicioPrograma = asignador.asignar(cantidadInstrucciones);
+                if (inicioPrograma < 0) {
+                    break;
+                }
+                for (int i = 0; i < cantidadInstrucciones; i++) {
+                    memoria.escribirUsuario(inicioPrograma + i, disco.leer(direccion + i));
+                }
+                bcp.asignarMemoria(inicioPrograma, inicioPrograma + cantidadInstrucciones - 1);
             }
-            for (int i = 0; i < cantidadInstrucciones; i++) {
-                memoria.escribirUsuario(inicioPrograma + i, disco.leer(direccion + i));
-            }
-            bcp.asignarMemoria(inicioPrograma, inicioPrograma + cantidadInstrucciones - 1);
             proceso.asignarPosicionBCP(posicionBCP);
             bcp.setEstadoListo();
             escribirBCPEnMemoria(proceso);
@@ -807,7 +821,7 @@ public class GestorProcesos {
      */
     private String[] getCamposBCP() {
         return new String[]{"idProceso", "estado", "prioridad", "boletos", "pc", "inicioMemoria", "finMemoria",
-            "ir", "ac", "ax", "bx", "cx", "dx", "ah", "al", "flag", "pila1", "pila2", "pila3", "pila4",
+            "tablaPaginas", "ir", "ac", "ax", "bx", "cx", "dx", "ah", "al", "flag", "pila1", "pila2", "pila3", "pila4",
             "pila5", "punteroPila", "cpuActual", "llegada", "rafaga", "tiempoInicio", "tiempoFinal",
             "tiempoServicio", "direccionSiguienteBCP", "archivosAbiertos"};
     }
@@ -824,7 +838,7 @@ public class GestorProcesos {
         String[] valores = {String.valueOf(bcp.getIdProceso()), bcp.getEstado(), String.valueOf(bcp.getPrioridad()),
             String.valueOf(bcp.getBoletos()),
             String.valueOf(bcp.getPc()), String.valueOf(bcp.getInicioMemoria()), String.valueOf(bcp.getFinMemoria()),
-            bcp.getIrToString(), String.valueOf(bcp.getAc()), String.valueOf(bcp.getAx()), String.valueOf(bcp.getBx()),
+            bcp.getTablaPaginasToString(), bcp.getIrToString(), String.valueOf(bcp.getAc()), String.valueOf(bcp.getAx()), String.valueOf(bcp.getBx()),
             String.valueOf(bcp.getCx()), bcp.getDx(), String.valueOf(bcp.getAh()), String.valueOf(bcp.getAl()),
             String.valueOf(bcp.esIgual()), String.valueOf(bcp.getValorPila(0)),
             String.valueOf(bcp.getValorPila(1)), String.valueOf(bcp.getValorPila(2)), String.valueOf(bcp.getValorPila(3)),
@@ -988,8 +1002,15 @@ public class GestorProcesos {
         if (esActual) {
             nucleo.getDespachador().retirarActual();
         }
-        memoria.liberarUsuario(bcp.getInicioMemoria(), bcp.getAlcance());
-        asignador.liberar(bcp.getInicioMemoria());
+        if (bcp.getTablaPaginas() != null) {
+            for (int marco : bcp.getTablaPaginas()) {
+                memoria.liberarUsuario(asignador.getDireccionesInicio()[marco], asignador.getTamañoPagina());
+            }
+            asignador.liberarPaginas(bcp.getTablaPaginas());
+        } else {
+            memoria.liberarUsuario(bcp.getInicioMemoria(), bcp.getAlcance());
+            asignador.liberar(bcp.getInicioMemoria());
+        }
         memoria.liberarKernel(posicion, cantidadCampos);
         proceso.liberarPosicionBCP();
         bcp.setDireccionSiguienteBCP(-1);
@@ -1013,8 +1034,9 @@ public class GestorProcesos {
      * @param tipoAsignacion tipo de asignación de la zona de usuario.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
+     * @param tamañoPagina posiciones de cada página para Paginación.
      */
-    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion, int tamañoPagina) {
         if (tamañoMemoria < 128) {
             throw new IllegalArgumentException("La RAM debe ser al menos 128 posiciones.");
         }
@@ -1027,7 +1049,7 @@ public class GestorProcesos {
             throw new IllegalArgumentException("La memoria virtual debe estar entre 0 y " + (tamañoDisco - tamañoIndices) + " posiciones.");
         }
         Memoria nuevaMemoria = new Memoria(tamañoMemoria, tamañoKernel);
-        AsignadorMemoria nuevoAsignador = new AsignadorMemoria(nuevaMemoria, tipoAsignacion, cantidadParticiones, tamañosParticion);
+        AsignadorMemoria nuevoAsignador = new AsignadorMemoria(nuevaMemoria, tipoAsignacion, cantidadParticiones, tamañosParticion, tamañoPagina);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
         List<Nucleo> nuevosNucleos = new ArrayList<>();

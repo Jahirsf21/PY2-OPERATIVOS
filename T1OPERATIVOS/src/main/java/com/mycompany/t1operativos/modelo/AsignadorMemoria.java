@@ -13,16 +13,18 @@ public class AsignadorMemoria {
     private int[] tamañosParticion;
     private boolean[] particionOcupada;
     private int siguientePosicion;
+    private int tamañoPagina;
 
     /**
      * Construye el asignador de la zona de usuario.
      *
      * @param memoria RAM compartida.
-     * @param tipoAsignacion Fija iguales, Fija desiguales, First Fit, Next Fit o Best Fit.
+     * @param tipoAsignacion Fija iguales, Fija desiguales, First Fit, Next Fit, Best Fit o Paginación.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
+     * @param tamañoPagina posiciones de cada página y marco para Paginación.
      */
-    public AsignadorMemoria(Memoria memoria, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+    public AsignadorMemoria(Memoria memoria, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion, int tamañoPagina) {
         if (memoria == null) {
             throw new IllegalArgumentException("La memoria no puede ser nula.");
         }
@@ -35,11 +37,48 @@ public class AsignadorMemoria {
         this.tamañosParticion = new int[0];
         this.particionOcupada = new boolean[0];
         this.siguientePosicion = memoria.getInicioUsuario();
+        this.tamañoPagina = 0;
         if ("Fija iguales".equals(tipoAsignacion)) {
             crearParticionesIguales(cantidadParticiones);
         } else if ("Fija desiguales".equals(tipoAsignacion)) {
             crearParticionesDesiguales(tamañosParticion);
+        } else if ("Paginación".equals(tipoAsignacion)) {
+            crearMarcos(tamañoPagina);
         }
+    }
+
+    /**
+     * Divide la zona de usuario en marcos del tamaño de página, sin sobrante.
+     *
+     * @param tamaño posiciones de cada página y marco.
+     */
+    private void crearMarcos(int tamaño) {
+        int zonaUsuario = memoria.getTamañoUsuario();
+        if (tamaño < 1 || tamaño > zonaUsuario) {
+            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y " + zonaUsuario + ".");
+        }
+        if (zonaUsuario % tamaño != 0) {
+            throw new IllegalArgumentException("La zona de usuario tiene " + zonaUsuario + " posiciones y no se divide exacto en páginas de " + tamaño + ".");
+        }
+        int cantidad = zonaUsuario / tamaño;
+        tamañoPagina = tamaño;
+        direccionesInicio = new int[cantidad];
+        tamañosParticion = new int[cantidad];
+        particionOcupada = new boolean[cantidad];
+        for (int i = 0; i < cantidad; i++) {
+            direccionesInicio[i] = memoria.getInicioUsuario() + i * tamaño;
+            tamañosParticion[i] = tamaño;
+            particionOcupada[i] = false;
+        }
+    }
+
+    /**
+     * Obtiene el tamaño de página.
+     *
+     * @return posiciones por página, o 0 si el tipo no es Paginación.
+     */
+    public int getTamañoPagina() {
+        return tamañoPagina;
     }
 
     /**
@@ -138,9 +177,13 @@ public class AsignadorMemoria {
      * Indica si un programa de ese tamaño puede ubicarse con el tipo de asignación.
      *
      * @param cantidad posiciones del programa.
-     * @return true si alguna partición o, en asignación dinámica, la zona de usuario tiene espacio para él.
+     * @return true si alguna partición, los marcos o, en asignación dinámica, la zona de usuario tienen espacio para él.
      */
     public boolean tieneEspacioPara(int cantidad) {
+        if ("Paginación".equals(tipoAsignacion)) {
+            boolean tieneEspacio = contarPaginas(cantidad) <= direccionesInicio.length;
+            return tieneEspacio;
+        }
         if ("Fija iguales".equals(tipoAsignacion) || "Fija desiguales".equals(tipoAsignacion)) {
             for (int tamaño : tamañosParticion) {
                 if (cantidad <= tamaño) {
@@ -296,6 +339,82 @@ public class AsignadorMemoria {
     }
 
     /**
+     * Calcula cuántas páginas ocupa un programa.
+     *
+     * @param cantidad posiciones del programa.
+     * @return páginas necesarias, contando la última aunque quede incompleta.
+     */
+    private int contarPaginas(int cantidad) {
+        int paginas = (cantidad + tamañoPagina - 1) / tamañoPagina;
+        return paginas;
+    }
+
+    /**
+     * Ocupa los marcos libres de menor número para todas las páginas de un programa.
+     *
+     * @param cantidad posiciones del programa.
+     * @return tabla de páginas con el marco de cada página, o null si ahora no hay marcos suficientes.
+     */
+    public int[] asignarPaginas(int cantidad) {
+        if (!"Paginación".equals(tipoAsignacion)) {
+            throw new IllegalStateException("Solo se asignan páginas con el tipo Paginación.");
+        }
+        if (cantidad < 1) {
+            throw new IllegalArgumentException("El programa debe ocupar al menos una posición.");
+        }
+        int paginas = contarPaginas(cantidad);
+        int libres = 0;
+        for (boolean ocupado : particionOcupada) {
+            if (!ocupado) {
+                libres++;
+            }
+        }
+        if (libres < paginas) {
+            return null;
+        }
+        int[] tabla = new int[paginas];
+        int pagina = 0;
+        for (int marco = 0; marco < particionOcupada.length && pagina < paginas; marco++) {
+            if (!particionOcupada[marco]) {
+                particionOcupada[marco] = true;
+                tabla[pagina] = marco;
+                pagina++;
+            }
+        }
+        return tabla;
+    }
+
+    /**
+     * Libera los marcos de una tabla de páginas.
+     *
+     * @param tabla marco de cada página del proceso.
+     */
+    public void liberarPaginas(int[] tabla) {
+        for (int marco : tabla) {
+            particionOcupada[marco] = false;
+        }
+    }
+
+    /**
+     * Traduce una dirección lógica a física con la tabla de páginas; sin tabla devuelve la misma dirección.
+     *
+     * @param tabla marco de cada página, o null en asignación contigua.
+     * @param direccion dirección del programa.
+     * @return dirección de la RAM.
+     */
+    public int traducirDireccion(int[] tabla, int direccion) {
+        if (tabla == null) {
+            return direccion;
+        }
+        int pagina = direccion / tamañoPagina;
+        if (direccion < 0 || pagina >= tabla.length) {
+            throw new IllegalArgumentException("La dirección lógica " + direccion + " está fuera de la tabla de páginas.");
+        }
+        int fisica = direccionesInicio[tabla[pagina]] + direccion % tamañoPagina;
+        return fisica;
+    }
+
+    /**
      * Obtiene la partición a la que pertenece una posición de la RAM.
      *
      * @param posicion dirección de la RAM.
@@ -317,7 +436,7 @@ public class AsignadorMemoria {
      * @return true si puede usarse.
      */
     private boolean esTipoAsignacionDisponible(String tipo) {
-        boolean disponible = "Fija iguales".equals(tipo) || "Fija desiguales".equals(tipo) || "First Fit".equals(tipo) || "Next Fit".equals(tipo) || "Best Fit".equals(tipo);
+        boolean disponible = "Fija iguales".equals(tipo) || "Fija desiguales".equals(tipo) || "First Fit".equals(tipo) || "Next Fit".equals(tipo) || "Best Fit".equals(tipo) || "Paginación".equals(tipo);
         return disponible;
     }
 }
