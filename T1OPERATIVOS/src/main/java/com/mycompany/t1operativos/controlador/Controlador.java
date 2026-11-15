@@ -106,7 +106,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || destino.getProcesosRegistrados().isEmpty()) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);

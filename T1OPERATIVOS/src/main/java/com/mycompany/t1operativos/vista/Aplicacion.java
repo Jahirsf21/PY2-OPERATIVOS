@@ -96,6 +96,12 @@ public class Aplicacion extends JFrame {
     private JSpinner selectorTasaA;
     /** Tasa de aumento de prioridad de los aceptados en SRR. */
     private JSpinner selectorTasaB;
+    /** Tipo de asignación de la zona de usuario. */
+    private JComboBox<String> selectorTipoAsignacion;
+    /** Cantidad de particiones fijas iguales. */
+    private JSpinner selectorCantidadParticiones;
+    /** Tamaños de las particiones fijas desiguales. */
+    private JTextField selectorTamañosParticion;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
@@ -271,6 +277,20 @@ public class Aplicacion extends JFrame {
         selectorTasaB = new JSpinner(new SpinnerNumberModel(1, 0, null, 1));
         EstiloUI.estilizarSpinner(selectorTasaB);
         selectorTasaB.setEnabled(false);
+        selectorTipoAsignacion = new JComboBox<>(new String[]{"Fija iguales", "Fija desiguales", "First Fit", "Next Fit", "Best Fit"});
+        EstiloUI.estilizarCombo(selectorTipoAsignacion);
+        selectorTipoAsignacion.setPreferredSize(new Dimension(130, 34));
+        selectorTipoAsignacion.setSelectedItem("First Fit");
+        selectorCantidadParticiones = new JSpinner(new SpinnerNumberModel(4, 2, null, 1));
+        EstiloUI.estilizarSpinner(selectorCantidadParticiones);
+        selectorCantidadParticiones.setEnabled(false);
+        selectorTamañosParticion = new JTextField("16, 32, 48, 96");
+        selectorTamañosParticion.setFont(EstiloUI.FUENTE_MONO);
+        selectorTamañosParticion.setForeground(EstiloUI.TEXTO);
+        selectorTamañosParticion.setPreferredSize(new Dimension(130, 34));
+        selectorTamañosParticion.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(EstiloUI.BORDE),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+        selectorTamañosParticion.setEnabled(false);
 
         lblDistribucionMemoria = new JLabel();
         lblDistribucionMemoria.setFont(EstiloUI.FUENTE_ETIQUETA);
@@ -286,6 +306,15 @@ public class Aplicacion extends JFrame {
         tarjetaMemoria.add(crearFilaCampo("Memoria principal (RAM)",
                 "Se divide siempre 25% SO y 75% usuario.", selectorMemoria));
         agregarDistribucion(tarjetaMemoria, lblDistribucionMemoria, barraMemoria);
+        tarjetaMemoria.add(Box.createVerticalStrut(10));
+        tarjetaMemoria.add(crearFilaCampo("Tipo de asignación",
+                "Cómo se ubican los programas en la zona de usuario.", selectorTipoAsignacion));
+        tarjetaMemoria.add(Box.createVerticalStrut(10));
+        tarjetaMemoria.add(crearFilaCampo("Cantidad de particiones",
+                "Particiones iguales; deben dividir exacto la zona de usuario.", selectorCantidadParticiones));
+        tarjetaMemoria.add(Box.createVerticalStrut(10));
+        tarjetaMemoria.add(crearFilaCampo("Tamaños de particiones",
+                "Particiones desiguales separadas por comas; deben sumar la zona de usuario.", selectorTamañosParticion));
 
         // ---- Tarjeta de almacenamiento secundario ----
         JPanel tarjetaDisco = crearTarjetaConfiguracion("Almacenamiento secundario");
@@ -343,6 +372,7 @@ public class Aplicacion extends JFrame {
         });
         selectorMemoriaVirtual.addChangeListener(e -> actualizarDistribucionDisco());
         selectorAlgoritmo.addActionListener(e -> habilitarCamposAlgoritmo(selectorAlgoritmo.isEnabled()));
+        selectorTipoAsignacion.addActionListener(e -> habilitarCamposMemoria(selectorTipoAsignacion.isEnabled()));
         actualizarDistribucionMemoria();
         actualizarDistribucionDisco();
 
@@ -442,6 +472,7 @@ public class Aplicacion extends JFrame {
             if (getTasaBSeleccionada() >= getTasaASeleccionada()) {
                 throw new IllegalArgumentException("La tasa B debe ser menor que la tasa A.");
             }
+            validarParticiones();
             ventanaConfiguracion.setVisible(false);
             firePropertyChange("Configuración confirmada", null, Boolean.TRUE);
         } catch (IllegalArgumentException ex) {
@@ -1022,6 +1053,51 @@ public class Aplicacion extends JFrame {
         selectorMemoriaVirtual.setEnabled(habilitado);
         selectorAlgoritmo.setEnabled(habilitado);
         habilitarCamposAlgoritmo(habilitado);
+        selectorTipoAsignacion.setEnabled(habilitado);
+        habilitarCamposMemoria(habilitado);
+    }
+
+    /**
+     * Habilita los parámetros del tipo de asignación elegido.
+     *
+     * @param habilitado {@code true} si la configuración se puede cambiar.
+     */
+    private void habilitarCamposMemoria(boolean habilitado) {
+        String tipo = getTipoAsignacionSeleccionado();
+        selectorCantidadParticiones.setEnabled(habilitado && "Fija iguales".equals(tipo));
+        selectorTamañosParticion.setEnabled(habilitado && "Fija desiguales".equals(tipo));
+    }
+
+    /**
+     * Valida que las particiones fijas ocupen exacto la zona de usuario de la RAM elegida.
+     */
+    private void validarParticiones() {
+        int zonaUsuario = getMemoriaSeleccionada() - getMemoriaSeleccionada() / 4;
+        String tipo = getTipoAsignacionSeleccionado();
+        if ("Fija iguales".equals(tipo)) {
+            int cantidad = getCantidadParticionesSeleccionada();
+            if (cantidad < 2 || cantidad > zonaUsuario) {
+                throw new IllegalArgumentException("La cantidad de particiones debe estar entre 2 y " + zonaUsuario + ".");
+            }
+            if (zonaUsuario % cantidad != 0) {
+                throw new IllegalArgumentException("La zona de usuario tiene " + zonaUsuario + " posiciones y no se divide exacto en " + cantidad + " particiones.");
+            }
+        } else if ("Fija desiguales".equals(tipo)) {
+            int[] tamaños = getTamañosParticionSeleccionados();
+            if (tamaños.length < 2) {
+                throw new IllegalArgumentException("Debe haber al menos 2 particiones desiguales.");
+            }
+            int suma = 0;
+            for (int tamaño : tamaños) {
+                if (tamaño < 1) {
+                    throw new IllegalArgumentException("El tamaño de cada partición debe ser un entero mayor o igual a 1.");
+                }
+                suma = suma + tamaño;
+            }
+            if (suma != zonaUsuario) {
+                throw new IllegalArgumentException("Las particiones suman " + suma + " y deben sumar exacto la zona de usuario de " + zonaUsuario + " posiciones.");
+            }
+        }
     }
 
     /**
@@ -1137,6 +1213,47 @@ public class Aplicacion extends JFrame {
             throw new IllegalArgumentException("La tasa B debe ser un entero mayor o igual a 0.");
         }
         return (Integer) selectorTasaB.getValue();
+    }
+
+    /**
+     * Obtiene el tipo de asignación de la zona de usuario elegido.
+     *
+     * @return nombre del tipo de asignación.
+     */
+    public String getTipoAsignacionSeleccionado() {
+        return (String) selectorTipoAsignacion.getSelectedItem();
+    }
+
+    /**
+     * Confirma y obtiene la cantidad de particiones fijas iguales.
+     *
+     * @return cantidad de particiones.
+     */
+    public int getCantidadParticionesSeleccionada() {
+        try {
+            selectorCantidadParticiones.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("La cantidad de particiones debe ser un entero mayor o igual a 2.");
+        }
+        return (Integer) selectorCantidadParticiones.getValue();
+    }
+
+    /**
+     * Obtiene el tamaño de cada partición fija desigual.
+     *
+     * @return tamaños de partición.
+     */
+    public int[] getTamañosParticionSeleccionados() {
+        String[] partes = selectorTamañosParticion.getText().split(",");
+        int[] tamaños = new int[partes.length];
+        for (int i = 0; i < partes.length; i++) {
+            try {
+                tamaños[i] = Integer.parseInt(partes[i].trim());
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Tamaño de partición inválido: \"" + partes[i].trim() + "\". Debe ser un entero.");
+            }
+        }
+        return tamaños;
     }
 
     // ================================================================
