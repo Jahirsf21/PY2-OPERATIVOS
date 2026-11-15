@@ -38,12 +38,13 @@ public class GestorProcesos {
      * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
      * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
      * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
+     * @param cantidadCPU cantidad de CPU, de 1 a 5.
      * @param tipoAsignacion tipo de asignación de la zona de usuario.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
      */
-    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, tipoAsignacion, cantidadParticiones, tamañosParticion);
+    public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, cantidadCPU, tipoAsignacion, cantidadParticiones, tamañosParticion);
         historial = new ArrayList<>();
     }
 
@@ -173,6 +174,9 @@ public class GestorProcesos {
         String salida = null;
         for (Nucleo nucleo : nucleos) {
             String salidaNucleo = ejecutarNucleo(nucleo);
+            if (salidaNucleo != null && nucleos.size() > 1) {
+                salidaNucleo = "CPU " + nucleo.getNumero() + ": " + salidaNucleo;
+            }
             if (salidaNucleo != null && salida == null) {
                 salida = salidaNucleo;
             } else if (salidaNucleo != null) {
@@ -237,18 +241,19 @@ public class GestorProcesos {
      * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
      * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
      * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
+     * @param cantidadCPU cantidad de CPU, de 1 a 5.
      * @param tipoAsignacion tipo de asignación de la zona de usuario.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
      * @return mensajes de programas que no se pudieron registrar.
      */
-    public List<String> nuevaCorrida(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+    public List<String> nuevaCorrida(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
         if (!estaCorridaTerminada()) {
             throw new IllegalStateException("Solo se inicia una nueva corrida cuando la actual terminó.");
         }
         Disco discoAnterior = disco;
         List<Proceso> procesosAnteriores = procesosRegistrados;
-        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, tipoAsignacion, cantidadParticiones, tamañosParticion);
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, cantidadCPU, tipoAsignacion, cantidadParticiones, tamañosParticion);
         List<String> mensajes = new ArrayList<>();
         for (Proceso anterior : procesosAnteriores) {
             String[] entrada = discoAnterior.leer(anterior.getPosicionIndice());
@@ -290,7 +295,7 @@ public class GestorProcesos {
      */
     public void limpiar() {
         Planificador planificador = nucleos.get(0).getPlanificador();
-        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB(), asignador.getTipoAsignacion(), asignador.getDireccionesInicio().length, asignador.getTamañosParticion());
+        reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB(), nucleos.size(), asignador.getTipoAsignacion(), asignador.getDireccionesInicio().length, asignador.getTamañosParticion());
         historial = new ArrayList<>();
     }
 
@@ -972,13 +977,17 @@ public class GestorProcesos {
      * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
      * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
      * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
+     * @param cantidadCPU cantidad de CPU, de 1 a 5.
      * @param tipoAsignacion tipo de asignación de la zona de usuario.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
      */
-    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+    private void reiniciarRecursos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
         if (tamañoMemoria < 128) {
             throw new IllegalArgumentException("La RAM debe ser al menos 128 posiciones.");
+        }
+        if (cantidadCPU < 1 || cantidadCPU > 5) {
+            throw new IllegalArgumentException("La cantidad de CPU debe estar entre 1 y 5.");
         }
         int tamañoKernel = tamañoMemoria / 4;
         int tamañoIndices = tamañoDisco / 20;
@@ -990,7 +999,9 @@ public class GestorProcesos {
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
         List<Nucleo> nuevosNucleos = new ArrayList<>();
-        nuevosNucleos.add(new Nucleo(1, new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB), new Despachador(new CPU())));
+        for (int numero = 1; numero <= cantidadCPU; numero++) {
+            nuevosNucleos.add(new Nucleo(numero, new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB), new Despachador(new CPU())));
+        }
         memoria = nuevaMemoria;
         asignador = nuevoAsignador;
         disco = nuevoDisco;
