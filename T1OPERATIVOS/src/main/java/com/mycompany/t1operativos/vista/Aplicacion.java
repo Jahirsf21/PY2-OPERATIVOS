@@ -723,12 +723,13 @@ public class Aplicacion extends JFrame {
         tabla.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tabla.setFillsViewportHeight(true);
         tabla.getTableHeader().setResizingAllowed(false);
-        int ancho = 300 / (tabla.getColumnCount() + 1);
+        int anchoEjecutando = tabla.getFontMetrics(EstiloUI.FUENTE_MONO_BOLD).stringWidth("EJECUTANDO") + 20;
         for (int i = 0; i < tabla.getColumnCount(); i++) {
             TableColumn columna = tabla.getColumnModel().getColumn(i);
-            int anchoColumna = ancho;
+            Component encabezado = tabla.getTableHeader().getDefaultRenderer().getTableCellRendererComponent(tabla, columna.getHeaderValue(), false, false, -1, i);
+            int anchoColumna = encabezado.getPreferredSize().width;
             if ("Estado".equals(tabla.getColumnName(i))) {
-                anchoColumna = ancho * 2;
+                anchoColumna = Math.max(anchoColumna, anchoEjecutando);
             }
             columna.setPreferredWidth(anchoColumna);
             columna.setWidth(anchoColumna);
