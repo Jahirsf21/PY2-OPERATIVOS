@@ -133,6 +133,40 @@ public class AsignadorMemoria {
     }
 
     /**
+     * Indica si un programa de ese tamaño puede ubicarse con el tipo de asignación.
+     *
+     * @param cantidad posiciones del programa.
+     * @return true si alguna partición o, en asignación dinámica, la zona de usuario tiene espacio para él.
+     */
+    public boolean tieneEspacioPara(int cantidad) {
+        if ("Fija iguales".equals(tipoAsignacion) || "Fija desiguales".equals(tipoAsignacion)) {
+            for (int tamaño : tamañosParticion) {
+                if (cantidad <= tamaño) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        boolean tieneEspacio = cantidad <= memoria.getTamañoUsuario();
+        return tieneEspacio;
+    }
+
+    /**
+     * Obtiene la partición a la que pertenece una posición de la RAM.
+     *
+     * @param posicion dirección de la RAM.
+     * @return índice de la partición, o -1 si la posición no está en ninguna.
+     */
+    public int getParticion(int posicion) {
+        for (int i = 0; i < direccionesInicio.length; i++) {
+            if (posicion >= direccionesInicio[i] && posicion < direccionesInicio[i] + tamañosParticion[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Comprueba si un tipo de asignación está disponible.
      *
      * @param tipo nombre del tipo de asignación.
