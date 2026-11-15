@@ -67,6 +67,9 @@ public class Aplicacion extends JFrame {
     private JTable tablaProcesos;
     /** Tabla de tiempos por proceso. */
     private JTable tablaEstadisticas;
+    /** Tabla con los segundos en que ejecuta cada proceso. */
+    private JTable tablaEjecucion;
+    private DefaultTableModel modeloEjecucion;
     /** Tabla de simulaciones terminadas. */
     private JTable tablaHistorial;
     /** Ocio y promedios de la simulación actual. */
@@ -146,15 +149,40 @@ public class Aplicacion extends JFrame {
         setMinimumSize(new Dimension(Math.min(1100, pantallaUtil.width), Math.min(680, pantallaUtil.height)));
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        JPanel raiz = new JPanel(new BorderLayout(14, 14));
+        JPanel raiz = new JPanel(new BorderLayout(0, 14));
         raiz.setBackground(EstiloUI.FONDO);
         raiz.setBorder(BorderFactory.createEmptyBorder(16, 20, 18, 20));
         setContentPane(raiz);
 
-        add(crearPanelSuperior(), BorderLayout.NORTH);
-        add(crearPanelTablas(), BorderLayout.CENTER);
-        add(crearPanelBCP(), BorderLayout.EAST);
-        add(crearPanelConsola(), BorderLayout.SOUTH);
+        PanelDesplazable contenido = new PanelDesplazable(new BorderLayout(14, 0));
+        contenido.setBackground(EstiloUI.FONDO);
+        JPanel izquierda = new JPanel(new GridBagLayout());
+        izquierda.setBackground(EstiloUI.FONDO);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 0, 14, 0);
+        gbc.gridy = 0;
+        izquierda.add(crearPanelEjecucion(), gbc);
+        gbc.gridy = 1;
+        izquierda.add(crearPanelConsola(), gbc);
+        gbc.gridy = 2;
+        izquierda.add(crearPanelListas(), gbc);
+        gbc.gridy = 3;
+        gbc.weighty = 1;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        izquierda.add(crearPanelTablas(), gbc);
+        contenido.add(izquierda, BorderLayout.CENTER);
+        contenido.add(crearPanelBCP(), BorderLayout.EAST);
+        JScrollPane scrollContenido = new JScrollPane(contenido,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollContenido.setBorder(BorderFactory.createEmptyBorder());
+        scrollContenido.getViewport().setBackground(EstiloUI.FONDO);
+        EstiloUI.aplicarBarras(scrollContenido, EstiloUI.PULGAR, EstiloUI.PULGAR_HOVER, EstiloUI.FONDO);
+
+        raiz.add(crearPanelSuperior(), BorderLayout.NORTH);
+        raiz.add(scrollContenido, BorderLayout.CENTER);
 
         ventanaEstadisticas = new JDialog(this, "Estadísticas", true);
         ventanaEstadisticas.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
@@ -509,13 +537,11 @@ public class Aplicacion extends JFrame {
     // ================================================================
 
     /**
-     * Crea las tablas de recursos, trabajos y procesos.
+     * Crea las tablas de RAM y disco, una al lado de la otra.
      *
-     * @return el panel con las tablas.
+     * @return el panel con las tablas de recursos.
      */
     private JPanel crearPanelTablas() {
-        JPanel panel = new JPanel(new BorderLayout(14, 14));
-        panel.setBackground(EstiloUI.FONDO);
         JPanel recursos = new JPanel(new BorderLayout(14, 0));
         recursos.setBackground(EstiloUI.FONDO);
 
@@ -586,14 +612,20 @@ public class Aplicacion extends JFrame {
                 EstiloUI.FONDO, "Programas y datos",
                 EstiloUI.COLOR_DISCO_VIRTUAL, "Memoria virtual"), BorderLayout.SOUTH);
         recursos.add(panelDisco, BorderLayout.CENTER);
-        panel.add(recursos, BorderLayout.CENTER);
+        return recursos;
+    }
 
+    /**
+     * Crea las listas de trabajos y procesos, una al lado de la otra.
+     *
+     * @return panel con las dos listas.
+     */
+    private JPanel crearPanelListas() {
         JPanel listas = new JPanel(new GridLayout(1, 2, 14, 0));
         listas.setBackground(EstiloUI.FONDO);
         listas.add(crearPanelTrabajos());
         listas.add(crearPanelProcesos());
-        panel.add(listas, BorderLayout.SOUTH);
-        return panel;
+        return listas;
     }
 
     /**
@@ -1106,6 +1138,71 @@ public class Aplicacion extends JFrame {
 
         return EstiloUI.crearTarjetaConTitulo("Consola", EstiloUI.iconoTarjetaConsola(),
                 EstiloUI.CONSOLA_FONDO, scroll);
+    }
+
+    /**
+     * Crea la tabla de ejecución: una fila por proceso y una columna por segundo.
+     *
+     * @return panel de ejecución de procesos.
+     */
+    private JPanel crearPanelEjecucion() {
+        modeloEjecucion = new DefaultTableModel(new Object[]{"CPU", "Proceso"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+        tablaEjecucion = new JTable(modeloEjecucion);
+        EstiloUI.aplicarEstiloTabla(tablaEjecucion, new RendererEjecucion());
+        tablaEjecucion.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tablaEjecucion.setRowSelectionAllowed(false);
+        tablaEjecucion.getTableHeader().setResizingAllowed(false);
+        ajustarTablaEjecucion();
+        return EstiloUI.crearTarjetaConTitulo("Ejecución de procesos", EstiloUI.iconoReloj(EstiloUI.PRIMARIO),
+                EstiloUI.ACENTO_AMBAR, EstiloUI.crearScroll(tablaEjecucion));
+    }
+
+    /**
+     * Muestra la ejecución de los procesos hasta el segundo actual.
+     *
+     * @param segundos cantidad de segundos simulados.
+     * @param filas CPU, proceso y el ID en cada segundo en que ejecutó.
+     */
+    public void mostrarEjecucion(int segundos, List<Object[]> filas) {
+        if (modeloEjecucion.getColumnCount() != segundos + 2) {
+            Object[] columnas = new Object[segundos + 2];
+            columnas[0] = "CPU";
+            columnas[1] = "Proceso";
+            for (int segundo = 1; segundo <= segundos; segundo++) {
+                columnas[segundo + 1] = segundo;
+            }
+            modeloEjecucion.setColumnIdentifiers(columnas);
+        }
+        modeloEjecucion.setRowCount(0);
+        for (Object[] fila : filas) {
+            modeloEjecucion.addRow(fila);
+        }
+        ajustarTablaEjecucion();
+        tablaEjecucion.scrollRectToVisible(tablaEjecucion.getCellRect(0, tablaEjecucion.getColumnCount() - 1, true));
+    }
+
+    /**
+     * Fija el ancho de las columnas y la altura de la tabla de ejecución según sus filas.
+     */
+    private void ajustarTablaEjecucion() {
+        for (int columna = 0; columna < tablaEjecucion.getColumnCount(); columna++) {
+            TableColumn columnaTabla = tablaEjecucion.getColumnModel().getColumn(columna);
+            int ancho = 36;
+            if (columna < 2) {
+                ancho = 80;
+            }
+            columnaTabla.setMinWidth(ancho);
+            columnaTabla.setMaxWidth(ancho);
+            columnaTabla.setPreferredWidth(ancho);
+        }
+        int filasVisibles = Math.max(3, tablaEjecucion.getRowCount());
+        tablaEjecucion.setPreferredScrollableViewportSize(new Dimension(600, filasVisibles * tablaEjecucion.getRowHeight()));
+        tablaEjecucion.revalidate();
     }
 
     /**
@@ -1775,6 +1872,31 @@ public class Aplicacion extends JFrame {
                 return EstiloUI.TEXTO_SECUNDARIO;
             }
             return EstiloUI.TEXTO;
+        }
+    }
+
+    /**
+     * Tabla de ejecución: los segundos en que el proceso ejecutó se pintan, sin texto, con el color de su ID.
+     */
+    private static class RendererEjecucion extends EstiloUI.RendererCelda {
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean foco, int fila, int columna) {
+            super.getTableCellRendererComponent(tabla, valor, seleccionado, foco, fila, columna);
+            if (columna >= 2) {
+                setText("");
+                setToolTipText(null);
+            }
+            return this;
+        }
+
+        @Override
+        protected Color fondo(JTable tabla, Object valor, int fila, int columna) {
+            if (columna >= 2 && valor instanceof Integer) {
+                return EstiloUI.colorProceso((Integer) valor);
+            }
+            return super.fondo(tabla, valor, fila, columna);
         }
     }
 

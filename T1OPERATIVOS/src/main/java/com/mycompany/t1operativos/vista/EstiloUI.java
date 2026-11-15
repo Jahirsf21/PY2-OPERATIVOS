@@ -398,6 +398,17 @@ public final class EstiloUI {
         return new Color(r, g, b);
     }
 
+    /**
+     * Obtiene el color de un proceso en la tabla de ejecución; IDs consecutivos quedan con tonos separados.
+     *
+     * @param idProceso ID del proceso.
+     * @return color del proceso.
+     */
+    public static Color colorProceso(int idProceso) {
+        float tono = (idProceso * 0.618034f) % 1f;
+        return Color.getHSBColor(tono, 0.55f, 0.88f);
+    }
+
     /** Color asociado a un estado de proceso. */
     public static Color colorEstado(String estado) {
         if (estado == null) {

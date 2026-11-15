@@ -12,6 +12,7 @@ import com.mycompany.t1operativos.modelo.Proceso;
 import com.mycompany.t1operativos.modelo.ResultadoSimulacion;
 import com.mycompany.t1operativos.vista.Aplicacion;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -339,6 +340,7 @@ public class Controlador {
         actualizarTablaDisco();
         actualizarTablaTrabajos();
         actualizarTablaProcesos();
+        actualizarTablaEjecucion();
         actualizarEstadisticas();
         actualizarBCP();
         actualizarSeleccionProximaInstruccion();
@@ -518,6 +520,36 @@ public class Controlador {
                 }
             }
         }
+    }
+
+    /**
+     * Muestra los segundos en que ejecutó cada proceso, por CPU y luego por ID.
+     */
+    private void actualizarTablaEjecucion() {
+        List<Object[]> filas = new ArrayList<>();
+        int segundos = 0;
+        if (gestor != null && !gestor.getProcesosRegistrados().isEmpty()) {
+            segundos = gestor.getReloj();
+            for (Nucleo nucleo : gestor.getNucleos()) {
+                List<Integer> historial = nucleo.getHistorialEjecucion();
+                for (Proceso proceso : gestor.getProcesosRegistrados()) {
+                    BCP bcp = proceso.getBCP();
+                    if (bcp.getCpuActual() == nucleo.getNumero()) {
+                        Object[] fila = new Object[segundos + 2];
+                        fila[0] = nucleo.getNumero();
+                        fila[1] = "P" + bcp.getIdProceso();
+                        for (int segundo = 0; segundo < segundos; segundo++) {
+                            fila[segundo + 2] = "";
+                            if (segundo < historial.size() && historial.get(segundo) == bcp.getIdProceso()) {
+                                fila[segundo + 2] = bcp.getIdProceso();
+                            }
+                        }
+                        filas.add(fila);
+                    }
+                }
+            }
+        }
+        vista.mostrarEjecucion(segundos, filas);
     }
 
     /**
