@@ -9,6 +9,9 @@ package com.mycompany.t1operativos.modelo;
 public class AsignadorMemoria {
     private Memoria memoria;
     private String tipoAsignacion;
+    private int[] direccionesInicio;
+    private int[] tamañosParticion;
+    private boolean[] particionOcupada;
 
     /**
      * Construye el asignador de la zona de usuario.
@@ -27,6 +30,36 @@ public class AsignadorMemoria {
         }
         this.memoria = memoria;
         this.tipoAsignacion = tipoAsignacion;
+        this.direccionesInicio = new int[0];
+        this.tamañosParticion = new int[0];
+        this.particionOcupada = new boolean[0];
+        if ("Fija iguales".equals(tipoAsignacion)) {
+            crearParticionesIguales(cantidadParticiones);
+        }
+    }
+
+    /**
+     * Divide la zona de usuario en particiones del mismo tamaño, sin sobrante.
+     *
+     * @param cantidad cantidad de particiones, al menos 2.
+     */
+    private void crearParticionesIguales(int cantidad) {
+        int zonaUsuario = memoria.getTamañoUsuario();
+        if (cantidad < 2 || cantidad > zonaUsuario) {
+            throw new IllegalArgumentException("La cantidad de particiones debe estar entre 2 y " + zonaUsuario + ".");
+        }
+        if (zonaUsuario % cantidad != 0) {
+            throw new IllegalArgumentException("La zona de usuario tiene " + zonaUsuario + " posiciones y no se divide exacto en " + cantidad + " particiones.");
+        }
+        int tamaño = zonaUsuario / cantidad;
+        direccionesInicio = new int[cantidad];
+        tamañosParticion = new int[cantidad];
+        particionOcupada = new boolean[cantidad];
+        for (int i = 0; i < cantidad; i++) {
+            direccionesInicio[i] = memoria.getInicioUsuario() + i * tamaño;
+            tamañosParticion[i] = tamaño;
+            particionOcupada[i] = false;
+        }
     }
 
     /**
@@ -36,6 +69,34 @@ public class AsignadorMemoria {
      */
     public String getTipoAsignacion() {
         return tipoAsignacion;
+    }
+
+    /**
+     * Obtiene la dirección de inicio de cada partición.
+     *
+     * @return direcciones de inicio; vacío en asignación dinámica.
+     */
+    public int[] getDireccionesInicio() {
+        return direccionesInicio;
+    }
+
+    /**
+     * Obtiene el tamaño de cada partición.
+     *
+     * @return tamaños de partición; vacío en asignación dinámica.
+     */
+    public int[] getTamañosParticion() {
+        return tamañosParticion;
+    }
+
+    /**
+     * Indica si una partición está ocupada por un proceso.
+     *
+     * @param particion índice de la partición.
+     * @return true si está ocupada.
+     */
+    public boolean estaOcupada(int particion) {
+        return particionOcupada[particion];
     }
 
     /**
