@@ -10,35 +10,32 @@ import java.util.List;
  */
 public class ResultadoCorrida {
     private int numero;
-    private Planificador planificador;
+    private List<Nucleo> nucleos;
     private AsignadorMemoria asignador;
     private List<Proceso> procesos;
     private int tiempoFinal;
-    private int segundosOcio;
 
     /**
      * Construye el resultado de una corrida terminada.
      *
      * @param numero número de la corrida, desde 1.
-     * @param planificador planificador usado en la corrida.
+     * @param nucleos CPU usadas en la corrida.
      * @param asignador asignador de memoria usado en la corrida.
      * @param procesos procesos de la corrida.
      * @param tiempoFinal reloj al terminar la corrida.
-     * @param segundosOcio segundos sin proceso en ejecución.
      */
-    public ResultadoCorrida(int numero, Planificador planificador, AsignadorMemoria asignador, List<Proceso> procesos, int tiempoFinal, int segundosOcio) {
+    public ResultadoCorrida(int numero, List<Nucleo> nucleos, AsignadorMemoria asignador, List<Proceso> procesos, int tiempoFinal) {
         if (numero < 1) {
             throw new IllegalArgumentException("El número de corrida debe ser al menos 1.");
         }
-        if (planificador == null || asignador == null || procesos == null) {
-            throw new IllegalArgumentException("El planificador, el asignador y los procesos no pueden ser nulos.");
+        if (nucleos == null || nucleos.isEmpty() || asignador == null || procesos == null) {
+            throw new IllegalArgumentException("Las CPU, el asignador y los procesos no pueden ser nulos.");
         }
         this.numero = numero;
-        this.planificador = planificador;
+        this.nucleos = nucleos;
         this.asignador = asignador;
         this.procesos = procesos;
         this.tiempoFinal = tiempoFinal;
-        this.segundosOcio = segundosOcio;
     }
 
     /**
@@ -51,12 +48,21 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene el planificador usado en la corrida.
+     * Obtiene las CPU usadas en la corrida.
      *
-     * @return planificador de la corrida.
+     * @return núcleos en orden de número.
+     */
+    public List<Nucleo> getNucleos() {
+        return nucleos;
+    }
+
+    /**
+     * Obtiene el planificador de la CPU 1, con el algoritmo y los parámetros de la corrida.
+     *
+     * @return planificador de la CPU 1.
      */
     public Planificador getPlanificador() {
-        return planificador;
+        return nucleos.get(0).getPlanificador();
     }
 
     /**
@@ -87,12 +93,16 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene el ocio de la CPU en la corrida.
+     * Obtiene el ocio de todas las CPU en la corrida.
      *
-     * @return segundos sin proceso en ejecución.
+     * @return suma de los segundos sin proceso en ejecución.
      */
     public int getSegundosOcio() {
-        return segundosOcio;
+        int ocio = 0;
+        for (Nucleo nucleo : nucleos) {
+            ocio = ocio + nucleo.getSegundosOcio();
+        }
+        return ocio;
     }
 
     /**

@@ -585,7 +585,7 @@ public class GestorProcesos {
         if (estaCorridaTerminada()) {
             return historial.get(historial.size() - 1);
         }
-        return new ResultadoCorrida(historial.size() + 1, nucleos.get(0).getPlanificador(), asignador, procesosRegistrados, reloj, getSegundosOcio());
+        return new ResultadoCorrida(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj);
     }
 
     /**
@@ -593,7 +593,7 @@ public class GestorProcesos {
      */
     private void guardarResultado() {
         if (estaCorridaTerminada()) {
-            historial.add(new ResultadoCorrida(historial.size() + 1, nucleos.get(0).getPlanificador(), asignador, procesosRegistrados, reloj, getSegundosOcio()));
+            historial.add(new ResultadoCorrida(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj));
         }
     }
 
