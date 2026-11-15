@@ -38,7 +38,6 @@ public class Despachador {
             throw new IllegalStateException("La CPU debe estar libre y el proceso listo.");
         }
         bcp.restaurarContexto(cpu);
-        bcp.setCpuActual(1);
         bcp.setEstadoEjecutando(instante);
         actual = proceso;
     }
@@ -58,7 +57,6 @@ public class Despachador {
         }
         Proceso retirado = actual;
         retirado.getBCP().guardarContexto(cpu);
-        retirado.getBCP().setCpuActual(-1);
         cpu.reiniciar();
         actual = null;
         return retirado;
@@ -81,7 +79,6 @@ public class Despachador {
         }
         Proceso expropiado = actual;
         bcp.guardarContexto(cpu);
-        bcp.setCpuActual(-1);
         bcp.setEstadoListo();
         cpu.reiniciar();
         actual = null;
