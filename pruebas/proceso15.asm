@@ -1,0 +1,3 @@
+MOV AX, 15
+MOV DX, 15
+INT 10H
