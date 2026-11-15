@@ -1,5 +1,8 @@
 package com.mycompany.t1operativos.modelo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Agrupa el planificador, el despachador y los contadores de una CPU del simulador.
  *
@@ -12,6 +15,7 @@ public class Nucleo {
     private Despachador despachador;
     private int quantumUsado;
     private int segundosOcio;
+    private List<Integer> historialEjecucion;
 
     /**
      * Construye una CPU del simulador.
@@ -32,6 +36,7 @@ public class Nucleo {
         this.despachador = despachador;
         this.quantumUsado = 0;
         this.segundosOcio = 0;
+        this.historialEjecucion = new ArrayList<>();
     }
 
     /**
@@ -103,5 +108,26 @@ public class Nucleo {
      */
     public void aumentarOcio() {
         segundosOcio++;
+    }
+
+    /**
+     * Obtiene el proceso que ejecutó esta CPU en cada segundo.
+     *
+     * @return ID por segundo desde cero, o 0 en los segundos de ocio.
+     */
+    public List<Integer> getHistorialEjecucion() {
+        return historialEjecucion;
+    }
+
+    /**
+     * Agrega al historial el proceso que ejecutó esta CPU en el segundo actual.
+     *
+     * @param idProceso ID del proceso, o 0 si hubo ocio.
+     */
+    public void registrarEjecucion(int idProceso) {
+        if (idProceso < 0) {
+            throw new IllegalArgumentException("El ID del proceso no puede ser negativo.");
+        }
+        historialEjecucion.add(idProceso);
     }
 }

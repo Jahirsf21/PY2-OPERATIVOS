@@ -216,6 +216,7 @@ public class GestorProcesos {
         Proceso proceso = nucleo.getDespachador().getActual();
         if (proceso == null) {
             nucleo.aumentarOcio();
+            nucleo.registrarEjecucion(0);
             return null;
         }
         BCP bcp = proceso.getBCP();
@@ -230,6 +231,7 @@ public class GestorProcesos {
             }
             cpu.cargarInstruccion(instruccion);
             bcp.aumentarTiempoEmpleado();
+            nucleo.registrarEjecucion(bcp.getIdProceso());
             nucleo.aumentarQuantumUsado();
             String salida = ejecutarInstruccion(nucleo, instruccion);
             bcp.guardarContexto(cpu);
