@@ -12,6 +12,7 @@ public class AsignadorMemoria {
     private int[] direccionesInicio;
     private int[] tamañosParticion;
     private boolean[] particionOcupada;
+    private int siguientePosicion;
 
     /**
      * Construye el asignador de la zona de usuario.
@@ -33,6 +34,7 @@ public class AsignadorMemoria {
         this.direccionesInicio = new int[0];
         this.tamañosParticion = new int[0];
         this.particionOcupada = new boolean[0];
+        this.siguientePosicion = memoria.getInicioUsuario();
         if ("Fija iguales".equals(tipoAsignacion)) {
             crearParticionesIguales(cantidadParticiones);
         } else if ("Fija desiguales".equals(tipoAsignacion)) {
@@ -208,6 +210,53 @@ public class AsignadorMemoria {
     }
 
     /**
+     * Busca el primer hueco suficiente desde la siguiente posición y, si no hay, desde el inicio de la zona de usuario.
+     * La siguiente posición queda justo después del bloque asignado.
+     *
+     * @param cantidad posiciones del programa.
+     * @return inicio del hueco, o -1 si no hay.
+     */
+    private int nextFit(int cantidad) {
+        int inicio = buscarHueco(siguientePosicion, memoria.getTamañoTotal(), cantidad);
+        if (inicio < 0) {
+            inicio = buscarHueco(memoria.getInicioUsuario(), memoria.getTamañoTotal(), cantidad);
+        }
+        if (inicio >= 0) {
+            siguientePosicion = inicio + cantidad;
+            if (siguientePosicion >= memoria.getTamañoTotal()) {
+                siguientePosicion = memoria.getInicioUsuario();
+            }
+        }
+        return inicio;
+    }
+
+    /**
+     * Busca el hueco suficiente más pequeño de la zona de usuario; empata por menor dirección.
+     *
+     * @param cantidad posiciones del programa.
+     * @return inicio del hueco, o -1 si no hay.
+     */
+    private int bestFit(int cantidad) {
+        int mejorInicio = -1;
+        int mejorTamaño = 0;
+        int inicioHueco = -1;
+        for (int posicion = memoria.getInicioUsuario(); posicion <= memoria.getTamañoTotal(); posicion++) {
+            boolean libre = posicion < memoria.getTamañoTotal() && memoria.leer(posicion) == null;
+            if (libre && inicioHueco < 0) {
+                inicioHueco = posicion;
+            } else if (!libre && inicioHueco >= 0) {
+                int tamañoHueco = posicion - inicioHueco;
+                if (tamañoHueco >= cantidad && (mejorInicio < 0 || tamañoHueco < mejorTamaño)) {
+                    mejorInicio = inicioHueco;
+                    mejorTamaño = tamañoHueco;
+                }
+                inicioHueco = -1;
+            }
+        }
+        return mejorInicio;
+    }
+
+    /**
      * Reserva espacio para un programa según el tipo de asignación.
      *
      * @param cantidad posiciones del programa.
@@ -220,6 +269,10 @@ public class AsignadorMemoria {
                 return asignarParticion(cantidad);
             case "First Fit":
                 return firstFit(cantidad);
+            case "Next Fit":
+                return nextFit(cantidad);
+            case "Best Fit":
+                return bestFit(cantidad);
             default:
                 throw new IllegalStateException("Tipo de asignación no disponible: " + tipoAsignacion + ".");
         }
