@@ -9,7 +9,7 @@ import com.mycompany.t1operativos.modelo.Nucleo;
 import com.mycompany.t1operativos.modelo.Parser;
 import com.mycompany.t1operativos.modelo.Planificador;
 import com.mycompany.t1operativos.modelo.Proceso;
-import com.mycompany.t1operativos.modelo.ResultadoCorrida;
+import com.mycompany.t1operativos.modelo.ResultadoSimulacion;
 import com.mycompany.t1operativos.vista.Aplicacion;
 import java.io.File;
 import java.util.List;
@@ -94,7 +94,7 @@ public class Controlador {
         });
         vista.getBtnEjecutar().addActionListener(e -> ejecutarTodo());
         vista.getBtnLimpiar().addActionListener(e -> limpiar());
-        vista.getBtnNuevaCorrida().addActionListener(e -> nuevaCorrida());
+        vista.getBtnNuevaSimulacion().addActionListener(e -> nuevaSimulacion());
         vista.getSelectorCPUBCP().addActionListener(e -> actualizarCPUSeleccionada());
         vista.getModeloTrabajos().addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 1 || e.getColumn() == 3 || e.getColumn() == 4)) {
@@ -302,11 +302,11 @@ public class Controlador {
     }
 
     /**
-     * Inicia otra corrida con los mismos programas y la configuración elegida.
+     * Inicia otra simulación con los mismos programas y la configuración elegida.
      */
-    private void nuevaCorrida() {
+    private void nuevaSimulacion() {
         try {
-            List<String> mensajes = gestor.nuevaCorrida(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
+            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados());
             vista.limpiarConsola();
             actualizarVista();
             if (!mensajes.isEmpty()) {
@@ -535,7 +535,7 @@ public class Controlador {
         String sorteo = null;
         if (gestor != null && !gestor.getProcesosRegistrados().isEmpty()) {
             reloj = gestor.getReloj();
-            ocio = describirOcio();
+            ocio = formatearOcio(gestor.getNucleos());
             algoritmo = gestor.getAlgoritmo();
             quantum = gestor.getQuantum();
             quantumsNivel = gestor.getQuantumsNivel();
@@ -544,7 +544,7 @@ public class Controlador {
             tasaB = gestor.getTasaB();
             sorteo = gestor.getUltimoSorteo(vista.getCPUBCPSeleccionada());
         }
-        String texto = describirAlgoritmo(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
+        String texto = formatearAlgoritmo(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
         if (sorteo != null && gestor.getNucleos().size() > 1) {
             texto = texto + "    Sorteo CPU " + vista.getCPUBCPSeleccionada() + ": " + sorteo;
         } else if (sorteo != null) {
@@ -554,16 +554,17 @@ public class Controlador {
     }
 
     /**
-     * Arma el ocio de la simulación: total con una CPU o el de cada CPU con varias.
+     * Arma el ocio de una simulación: el de la única CPU o el de cada CPU con varias.
      *
+     * @param nucleos CPU de la simulación.
      * @return texto como «2 s» o «1 = 0 s, 2 = 2 s».
      */
-    private String describirOcio() {
-        if (gestor.getNucleos().size() == 1) {
-            return gestor.getSegundosOcio() + " s";
+    private String formatearOcio(List<Nucleo> nucleos) {
+        if (nucleos.size() == 1) {
+            return nucleos.get(0).getSegundosOcio() + " s";
         }
         String texto = "";
-        for (Nucleo nucleo : gestor.getNucleos()) {
+        for (Nucleo nucleo : nucleos) {
             if (!texto.isEmpty()) {
                 texto = texto + ", ";
             }
@@ -583,7 +584,7 @@ public class Controlador {
      * @param tasaB tasa de los aceptados en SRR.
      * @return texto como «RR (q = 2)».
      */
-    private String describirAlgoritmo(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
+    private String formatearAlgoritmo(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
         String texto = algoritmo;
         if ("RR".equals(algoritmo) || "Lottery".equals(algoritmo)) {
             texto = texto + " (q = " + quantum + ")";
@@ -612,12 +613,12 @@ public class Controlador {
         modelo.setRowCount(0);
         DefaultTableModel historial = vista.getModeloHistorial();
         historial.setRowCount(0);
-        vista.mostrarResumenCorrida(" ");
+        vista.mostrarResumenSimulacion(" ");
         if (gestor == null) {
             return;
         }
         if (!gestor.getProcesosRegistrados().isEmpty()) {
-            ResultadoCorrida actual = gestor.getCorridaActual();
+            ResultadoSimulacion actual = gestor.getSimulacionActual();
             for (Proceso proceso : actual.getProcesos()) {
                 BCP bcp = proceso.getBCP();
                 modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(),
@@ -625,17 +626,17 @@ public class Controlador {
                     bcp.getTiempoEmpleadoSegundos(), formatearInstante(actual.calcularRetorno(proceso)),
                     formatearDecimal(actual.calcularRazonRetorno(proceso))});
             }
-            vista.mostrarResumenCorrida("Corrida " + actual.getNumero() + " · Reloj " + gestor.getReloj() + " s · Ocio CPU "
-                    + actual.getSegundosOcio() + " s · Tr promedio " + formatearDecimal(actual.calcularPromedioRetorno())
+            vista.mostrarResumenSimulacion("Simulación " + actual.getNumero() + " · Reloj " + gestor.getReloj() + " s · Ocio CPU "
+                    + formatearOcio(actual.getNucleos()) + " · Tr promedio " + formatearDecimal(actual.calcularPromedioRetorno())
                     + " · Tr/Ts promedio " + formatearDecimal(actual.calcularPromedioRazon()));
         }
-        for (ResultadoCorrida corrida : gestor.getHistorial()) {
-            Planificador planificador = corrida.getPlanificador();
-            historial.addRow(new Object[]{corrida.getNumero(),
-                describirAlgoritmo(planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB()),
-                corrida.getAsignador().getTipoAsignacion(), corrida.getProcesos().size(), corrida.getTiempoFinal(),
-                corrida.getSegundosOcio(), formatearDecimal(corrida.calcularPromedioRetorno()),
-                formatearDecimal(corrida.calcularPromedioRazon())});
+        for (ResultadoSimulacion simulacion : gestor.getHistorial()) {
+            Planificador planificador = simulacion.getPlanificador();
+            historial.addRow(new Object[]{simulacion.getNumero(),
+                formatearAlgoritmo(planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB()),
+                simulacion.getAsignador().getTipoAsignacion(), simulacion.getNucleos().size(), simulacion.getProcesos().size(), simulacion.getTiempoFinal(),
+                formatearOcio(simulacion.getNucleos()), formatearDecimal(simulacion.calcularPromedioRetorno()),
+                formatearDecimal(simulacion.calcularPromedioRazon())});
         }
     }
 
@@ -748,8 +749,8 @@ public class Controlador {
         vista.getBtnPasoAPaso().setEnabled(ejecutable && !modoAutomatico && !pasoEnCurso);
         vista.getBtnCargarArchivo().setEnabled(!pasoEnCurso);
         vista.getBtnLimpiar().setEnabled(hayProcesosRegistrados && !pasoEnCurso && (!modoAutomatico || !ejecutable));
-        boolean terminada = hayProcesosRegistrados && gestor.estaCorridaTerminada();
-        vista.getBtnNuevaCorrida().setEnabled(terminada && !pasoEnCurso);
+        boolean terminada = hayProcesosRegistrados && gestor.estaSimulacionTerminada();
+        vista.getBtnNuevaSimulacion().setEnabled(terminada && !pasoEnCurso);
         vista.setConfiguracionHabilitada(!hayProcesosRegistrados || terminada);
         vista.setTrabajosEditables(hayProcesosRegistrados && gestor.puedeEditarTrabajos());
     }

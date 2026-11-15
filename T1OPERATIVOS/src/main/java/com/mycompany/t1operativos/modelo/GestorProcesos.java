@@ -22,8 +22,8 @@ public class GestorProcesos {
     private List<Proceso> procesosRegistrados;
     private Queue<Proceso> colaTrabajos;
     private int reloj;
-    private boolean corridaIniciada;
-    private List<ResultadoCorrida> historial;
+    private boolean simulacionIniciada;
+    private List<ResultadoSimulacion> historial;
     private List<Nucleo> nucleos;
     private List<String> erroresPaso;
 
@@ -103,7 +103,7 @@ public class GestorProcesos {
         if (!puedeEjecutar()) {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
-        corridaIniciada = true;
+        simulacionIniciada = true;
         boolean cambio = false;
         boolean[] agotados = new boolean[nucleos.size()];
         for (int i = 0; i < nucleos.size(); i++) {
@@ -248,7 +248,7 @@ public class GestorProcesos {
     }
 
     /**
-     * Inicia otra corrida desde cero con los mismos programas, sus llegadas, prioridades y boletos.
+     * Inicia otra simulación desde cero con los mismos programas, sus llegadas, prioridades y boletos.
      *
      * @param tamañoMemoria posiciones de RAM.
      * @param tamañoDisco posiciones de disco.
@@ -265,9 +265,9 @@ public class GestorProcesos {
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
      * @return mensajes de programas que no se pudieron registrar.
      */
-    public List<String> nuevaCorrida(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
-        if (!estaCorridaTerminada()) {
-            throw new IllegalStateException("Solo se inicia una nueva corrida cuando la actual terminó.");
+    public List<String> nuevaSimulacion(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, int cantidadCPU, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+        if (!estaSimulacionTerminada()) {
+            throw new IllegalStateException("Solo se inicia una nueva simulación cuando la actual terminó.");
         }
         Disco discoAnterior = disco;
         List<Proceso> procesosAnteriores = procesosRegistrados;
@@ -561,42 +561,42 @@ public class GestorProcesos {
     }
 
     /**
-     * Obtiene los resultados de las corridas terminadas.
+     * Obtiene los resultados de las simulaciones terminadas.
      *
-     * @return historial de corridas.
+     * @return historial de simulaciones.
      */
-    public List<ResultadoCorrida> getHistorial() {
+    public List<ResultadoSimulacion> getHistorial() {
         return historial;
     }
 
     /**
-     * Comprueba si la corrida empezó y todos sus procesos terminaron.
+     * Comprueba si la simulación empezó y todos sus procesos terminaron.
      *
-     * @return true si la corrida terminó.
+     * @return true si la simulación terminó.
      */
-    public boolean estaCorridaTerminada() {
-        boolean terminada = corridaIniciada && !hayProcesosSinTerminar();
+    public boolean estaSimulacionTerminada() {
+        boolean terminada = simulacionIniciada && !hayProcesosSinTerminar();
         return terminada;
     }
 
     /**
-     * Obtiene el resultado de la corrida en curso o, si terminó, el guardado en el historial.
+     * Obtiene el resultado de la simulación en curso o, si terminó, el guardado en el historial.
      *
-     * @return resultado de la corrida actual.
+     * @return resultado de la simulación actual.
      */
-    public ResultadoCorrida getCorridaActual() {
-        if (estaCorridaTerminada()) {
+    public ResultadoSimulacion getSimulacionActual() {
+        if (estaSimulacionTerminada()) {
             return historial.get(historial.size() - 1);
         }
-        return new ResultadoCorrida(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj);
+        return new ResultadoSimulacion(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj);
     }
 
     /**
-     * Guarda el resultado de la corrida en el historial si terminó.
+     * Guarda el resultado de la simulación en el historial si terminó.
      */
     private void guardarResultado() {
-        if (estaCorridaTerminada()) {
-            historial.add(new ResultadoCorrida(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj));
+        if (estaSimulacionTerminada()) {
+            historial.add(new ResultadoSimulacion(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj));
         }
     }
 
@@ -606,7 +606,7 @@ public class GestorProcesos {
      * @return true antes del primer paso.
      */
     public boolean puedeEditarTrabajos() {
-        return !corridaIniciada;
+        return !simulacionIniciada;
     }
 
     /**
@@ -646,7 +646,7 @@ public class GestorProcesos {
      * @return BCP del proceso.
      */
     private BCP buscarEditable(int idProceso) {
-        if (corridaIniciada) {
+        if (simulacionIniciada) {
             throw new IllegalStateException("La llegada, la prioridad y los boletos solo se editan antes del primer paso.");
         }
         for (Proceso proceso : procesosRegistrados) {
@@ -696,8 +696,8 @@ public class GestorProcesos {
         if (!asignador.tieneEspacioPara(instrucciones.size())) {
             throw new IllegalArgumentException("El programa de " + instrucciones.size() + " posiciones no cabe con el tipo de asignación " + asignador.getTipoAsignacion() + ".");
         }
-        if (estaCorridaTerminada()) {
-            throw new IllegalStateException("La corrida terminó; use Nueva corrida para ejecutar otra.");
+        if (estaSimulacionTerminada()) {
+            throw new IllegalStateException("La simulación terminó; use Nueva simulación para ejecutar otra.");
         }
         Nucleo nucleo = elegirNucleo();
         if (nucleo == null) {
@@ -1041,7 +1041,7 @@ public class GestorProcesos {
         gestorArchivos = new GestorArchivos(disco, procesosRegistrados);
         colaTrabajos = new ArrayDeque<>();
         reloj = 0;
-        corridaIniciada = false;
+        simulacionIniciada = false;
         erroresPaso = new ArrayList<>();
     }
 }

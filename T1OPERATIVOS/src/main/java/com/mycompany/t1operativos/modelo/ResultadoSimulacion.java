@@ -3,12 +3,12 @@ package com.mycompany.t1operativos.modelo;
 import java.util.List;
 
 /**
- * Guarda el resultado de una corrida terminada.
+ * Guarda el resultado de una simulación terminada.
  *
  * @author Deislher Sánchez Funez
  * @author Natalia Granados Rosales
  */
-public class ResultadoCorrida {
+public class ResultadoSimulacion {
     private int numero;
     private List<Nucleo> nucleos;
     private AsignadorMemoria asignador;
@@ -16,17 +16,17 @@ public class ResultadoCorrida {
     private int tiempoFinal;
 
     /**
-     * Construye el resultado de una corrida terminada.
+     * Construye el resultado de una simulación terminada.
      *
-     * @param numero número de la corrida, desde 1.
-     * @param nucleos CPU usadas en la corrida.
-     * @param asignador asignador de memoria usado en la corrida.
-     * @param procesos procesos de la corrida.
-     * @param tiempoFinal reloj al terminar la corrida.
+     * @param numero número de la simulación, desde 1.
+     * @param nucleos CPU usadas en la simulación.
+     * @param asignador asignador de memoria usado en la simulación.
+     * @param procesos procesos de la simulación.
+     * @param tiempoFinal reloj al terminar la simulación.
      */
-    public ResultadoCorrida(int numero, List<Nucleo> nucleos, AsignadorMemoria asignador, List<Proceso> procesos, int tiempoFinal) {
+    public ResultadoSimulacion(int numero, List<Nucleo> nucleos, AsignadorMemoria asignador, List<Proceso> procesos, int tiempoFinal) {
         if (numero < 1) {
-            throw new IllegalArgumentException("El número de corrida debe ser al menos 1.");
+            throw new IllegalArgumentException("El número de simulación debe ser al menos 1.");
         }
         if (nucleos == null || nucleos.isEmpty() || asignador == null || procesos == null) {
             throw new IllegalArgumentException("Las CPU, el asignador y los procesos no pueden ser nulos.");
@@ -39,7 +39,7 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene el número de la corrida.
+     * Obtiene el número de la simulación.
      *
      * @return número desde 1.
      */
@@ -48,7 +48,7 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene las CPU usadas en la corrida.
+     * Obtiene las CPU usadas en la simulación.
      *
      * @return núcleos en orden de número.
      */
@@ -57,7 +57,7 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene el planificador de la CPU 1, con el algoritmo y los parámetros de la corrida.
+     * Obtiene el planificador de la CPU 1, con el algoritmo y los parámetros de la simulación.
      *
      * @return planificador de la CPU 1.
      */
@@ -66,25 +66,25 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene el asignador de memoria usado en la corrida.
+     * Obtiene el asignador de memoria usado en la simulación.
      *
-     * @return asignador de la corrida.
+     * @return asignador de la simulación.
      */
     public AsignadorMemoria getAsignador() {
         return asignador;
     }
 
     /**
-     * Obtiene los procesos de la corrida.
+     * Obtiene los procesos de la simulación.
      *
-     * @return procesos de la corrida.
+     * @return procesos de la simulación.
      */
     public List<Proceso> getProcesos() {
         return procesos;
     }
 
     /**
-     * Obtiene el reloj al terminar la corrida.
+     * Obtiene el reloj al terminar la simulación.
      *
      * @return segundo final.
      */
@@ -93,7 +93,7 @@ public class ResultadoCorrida {
     }
 
     /**
-     * Obtiene el ocio de todas las CPU en la corrida.
+     * Obtiene el ocio de todas las CPU en la simulación.
      *
      * @return suma de los segundos sin proceso en ejecución.
      */
@@ -108,7 +108,7 @@ public class ResultadoCorrida {
     /**
      * Calcula el tiempo de retorno de un proceso: final menos llegada.
      *
-     * @param proceso proceso de la corrida.
+     * @param proceso proceso de la simulación.
      * @return tiempo de retorno, o -1 si no terminó.
      */
     public int calcularRetorno(Proceso proceso) {
@@ -123,7 +123,7 @@ public class ResultadoCorrida {
     /**
      * Calcula la razón entre el tiempo de retorno y el servicio de un proceso.
      *
-     * @param proceso proceso de la corrida.
+     * @param proceso proceso de la simulación.
      * @return Tr/Ts, o -1 si no terminó o no tuvo servicio.
      */
     public double calcularRazonRetorno(Proceso proceso) {

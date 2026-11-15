@@ -44,8 +44,8 @@ public class Aplicacion extends JFrame {
     private JButton btnEjecutar;
     private JButton btnPasoAPaso;
     private JButton btnLimpiar;
-    /** Botón para repetir la corrida con otra configuración. */
-    private JButton btnNuevaCorrida;
+    /** Botón para repetir la simulación con otra configuración. */
+    private JButton btnNuevaSimulacion;
     private JButton btnCargarArchivo;
     /** Botón de estadísticas. */
     private JButton btnEstadisticas;
@@ -67,10 +67,10 @@ public class Aplicacion extends JFrame {
     private JTable tablaProcesos;
     /** Tabla de tiempos por proceso. */
     private JTable tablaEstadisticas;
-    /** Tabla de corridas terminadas. */
+    /** Tabla de simulaciones terminadas. */
     private JTable tablaHistorial;
-    /** Ocio y promedios de la corrida actual. */
-    private JLabel lblResumenCorrida;
+    /** Ocio y promedios de la simulación actual. */
+    private JLabel lblResumenSimulacion;
     /** Texto completo del BCP (se conserva para {@link #getAreaBCP()}). */
     private JTextArea areaBCP;
     /** Panel con una fila por campo del BCP. */
@@ -159,7 +159,8 @@ public class Aplicacion extends JFrame {
         ventanaEstadisticas = new JDialog(this, "Estadísticas", true);
         ventanaEstadisticas.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
         ventanaEstadisticas.setContentPane(crearPanelEstadisticas());
-        ventanaEstadisticas.setSize(960, 640);
+        int anchoEstadisticas = Math.min(1180, Toolkit.getDefaultToolkit().getScreenSize().width - 80);
+        ventanaEstadisticas.setSize(anchoEstadisticas, 640);
         ventanaEstadisticas.setMinimumSize(new Dimension(640, 480));
 
         ventanaConfiguracion = new JDialog(this, "Configurar Simulador", true);
@@ -202,9 +203,9 @@ public class Aplicacion extends JFrame {
         panelBotonesAccion.add(btnEjecutar);
         panelBotonesAccion.add(btnPasoAPaso);
         panelBotonesAccion.add(btnLimpiar);
-        btnNuevaCorrida = EstiloUI.crearBotonSecundario("Nueva corrida");
-        btnNuevaCorrida.setEnabled(false);
-        panelBotonesAccion.add(btnNuevaCorrida);
+        btnNuevaSimulacion = EstiloUI.crearBotonSecundario("Nueva simulación");
+        btnNuevaSimulacion.setEnabled(false);
+        panelBotonesAccion.add(btnNuevaSimulacion);
         btnEstadisticas = EstiloUI.crearBotonSecundario("Estadísticas");
         btnEstadisticas.addActionListener(e -> mostrarEstadisticas());
         panelBotonesAccion.add(btnEstadisticas);
@@ -723,7 +724,7 @@ public class Aplicacion extends JFrame {
         encabezado.setBackground(EstiloUI.FONDO);
         JLabel titulo = EstiloUI.crearTituloVentana("Estadísticas");
         JLabel subtitulo = EstiloUI.crearEtiquetaSecundaria(
-                "Tiempos simulados por corrida. Tr = tiempo de retorno, Ts = tiempo de servicio.");
+                "Tiempos por simulación. Tr = tiempo de retorno, Ts = tiempo de servicio.");
         titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
         subtitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
         encabezado.add(titulo);
@@ -737,31 +738,33 @@ public class Aplicacion extends JFrame {
                 return false;
             }
         };
-        tablaEstadisticas = new JTable(modeloEstadisticas);
+        tablaEstadisticas = crearTablaAjustable(modeloEstadisticas);
         EstiloUI.aplicarEstiloTabla(tablaEstadisticas);
         tablaEstadisticas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        lblResumenCorrida = EstiloUI.crearEtiquetaSecundaria(" ");
-        lblResumenCorrida.setBorder(BorderFactory.createEmptyBorder(8, 2, 0, 2));
+        lblResumenSimulacion = EstiloUI.crearEtiquetaSecundaria(" ");
+        lblResumenSimulacion.setBorder(BorderFactory.createEmptyBorder(8, 2, 0, 2));
         JPanel contenidoActual = new JPanel(new BorderLayout());
         contenidoActual.setOpaque(false);
         contenidoActual.add(EstiloUI.crearScroll(tablaEstadisticas), BorderLayout.CENTER);
-        contenidoActual.add(lblResumenCorrida, BorderLayout.SOUTH);
+        contenidoActual.add(lblResumenSimulacion, BorderLayout.SOUTH);
 
-        modeloHistorial = new DefaultTableModel(new Object[]{"Corrida", "Algoritmo", "Asignación", "Procesos", "Final", "Ocio (s)", "Tr promedio", "Tr/Ts promedio"}, 0) {
+        modeloHistorial = new DefaultTableModel(new Object[]{"Simulación", "Algoritmo", "Asignación", "CPU", "Procesos", "Final", "Ocio", "Tr promedio", "Tr/Ts promedio"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
             }
         };
-        tablaHistorial = new JTable(modeloHistorial);
+        tablaHistorial = crearTablaAjustable(modeloHistorial);
         EstiloUI.aplicarEstiloTabla(tablaHistorial);
         tablaHistorial.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        modeloEstadisticas.addTableModelListener(e -> ajustarColumnas(tablaEstadisticas));
+        modeloHistorial.addTableModelListener(e -> ajustarColumnas(tablaHistorial));
 
         JPanel tarjetas = new JPanel(new GridLayout(2, 1, 0, 14));
         tarjetas.setOpaque(false);
-        tarjetas.add(EstiloUI.crearTarjetaConTitulo("Corrida actual", EstiloUI.iconoReloj(EstiloUI.PRIMARIO),
+        tarjetas.add(EstiloUI.crearTarjetaConTitulo("Simulación Actual", EstiloUI.iconoReloj(EstiloUI.PRIMARIO),
                 EstiloUI.PRIMARIO, contenidoActual));
-        tarjetas.add(EstiloUI.crearTarjetaConTitulo("Historial de corridas", EstiloUI.iconoReloj(EstiloUI.PRIMARIO),
+        tarjetas.add(EstiloUI.crearTarjetaConTitulo("Historial de simulaciones", EstiloUI.iconoReloj(EstiloUI.PRIMARIO),
                 EstiloUI.PRIMARIO, EstiloUI.crearScroll(tablaHistorial)));
         panel.add(tarjetas, BorderLayout.CENTER);
 
@@ -772,6 +775,40 @@ public class Aplicacion extends JFrame {
         botones.add(cerrar);
         panel.add(botones, BorderLayout.SOUTH);
         return panel;
+    }
+
+    /**
+     * Crea una tabla que ocupa todo el ancho si cabe y, si no, permite desplazarse a los lados.
+     *
+     * @param modelo modelo de la tabla.
+     * @return tabla de estadísticas.
+     */
+    private JTable crearTablaAjustable(DefaultTableModel modelo) {
+        return new JTable(modelo) {
+            @Override
+            public boolean getScrollableTracksViewportWidth() {
+                boolean cabe = getParent() != null && getPreferredSize().width < getParent().getWidth();
+                return cabe;
+            }
+        };
+    }
+
+    /**
+     * Ajusta cada columna al ancho de su texto más largo, incluido el encabezado.
+     *
+     * @param tabla tabla de estadísticas.
+     */
+    private void ajustarColumnas(JTable tabla) {
+        for (int columna = 0; columna < tabla.getColumnCount(); columna++) {
+            TableColumn columnaTabla = tabla.getColumnModel().getColumn(columna);
+            Component encabezado = tabla.getTableHeader().getDefaultRenderer().getTableCellRendererComponent(tabla, columnaTabla.getHeaderValue(), false, false, -1, columna);
+            int ancho = encabezado.getPreferredSize().width;
+            for (int fila = 0; fila < tabla.getRowCount(); fila++) {
+                Component celda = tabla.prepareRenderer(tabla.getCellRenderer(fila, columna), fila, columna);
+                ancho = Math.max(ancho, celda.getPreferredSize().width);
+            }
+            columnaTabla.setPreferredWidth(ancho + 16);
+        }
     }
 
     /**
@@ -1524,12 +1561,12 @@ public class Aplicacion extends JFrame {
     }
 
     /**
-     * Obtiene el botón de nueva corrida.
+     * Obtiene el botón de nueva simulación.
      *
-     * @return el botón Nueva corrida.
+     * @return el botón Nueva simulación.
      */
-    public JButton getBtnNuevaCorrida() {
-        return btnNuevaCorrida;
+    public JButton getBtnNuevaSimulacion() {
+        return btnNuevaSimulacion;
     }
 
     /**
@@ -1605,21 +1642,21 @@ public class Aplicacion extends JFrame {
     }
 
     /**
-     * Obtiene el modelo del historial de corridas.
+     * Obtiene el modelo del historial de simulaciones.
      *
-     * @return modelo con una fila por corrida terminada.
+     * @return modelo con una fila por simulación terminada.
      */
     public DefaultTableModel getModeloHistorial() {
         return modeloHistorial;
     }
 
     /**
-     * Muestra el ocio y los promedios de la corrida actual.
+     * Muestra el ocio y los promedios de la simulación actual.
      *
-     * @param texto resumen de la corrida.
+     * @param texto resumen de la simulación.
      */
-    public void mostrarResumenCorrida(String texto) {
-        lblResumenCorrida.setText(texto);
+    public void mostrarResumenSimulacion(String texto) {
+        lblResumenSimulacion.setText(texto);
     }
 
     /**
