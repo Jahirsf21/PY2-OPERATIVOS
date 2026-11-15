@@ -35,6 +35,8 @@ public class AsignadorMemoria {
         this.particionOcupada = new boolean[0];
         if ("Fija iguales".equals(tipoAsignacion)) {
             crearParticionesIguales(cantidadParticiones);
+        } else if ("Fija desiguales".equals(tipoAsignacion)) {
+            crearParticionesDesiguales(tamañosParticion);
         }
     }
 
@@ -59,6 +61,37 @@ public class AsignadorMemoria {
             direccionesInicio[i] = memoria.getInicioUsuario() + i * tamaño;
             tamañosParticion[i] = tamaño;
             particionOcupada[i] = false;
+        }
+    }
+
+    /**
+     * Ubica una detrás de otra las particiones de los tamaños dados, que ocupan toda la zona de usuario.
+     *
+     * @param tamaños tamaño de cada partición, al menos 2 particiones.
+     */
+    private void crearParticionesDesiguales(int[] tamaños) {
+        if (tamaños == null || tamaños.length < 2) {
+            throw new IllegalArgumentException("Debe haber al menos 2 particiones desiguales.");
+        }
+        int suma = 0;
+        for (int tamaño : tamaños) {
+            if (tamaño < 1) {
+                throw new IllegalArgumentException("El tamaño de cada partición debe ser un entero mayor o igual a 1.");
+            }
+            suma = suma + tamaño;
+        }
+        int zonaUsuario = memoria.getTamañoUsuario();
+        if (suma != zonaUsuario) {
+            throw new IllegalArgumentException("Las particiones suman " + suma + " y deben sumar exacto la zona de usuario de " + zonaUsuario + " posiciones.");
+        }
+        direccionesInicio = new int[tamaños.length];
+        tamañosParticion = tamaños;
+        particionOcupada = new boolean[tamaños.length];
+        int inicio = memoria.getInicioUsuario();
+        for (int i = 0; i < tamaños.length; i++) {
+            direccionesInicio[i] = inicio;
+            particionOcupada[i] = false;
+            inicio = inicio + tamaños[i];
         }
     }
 
