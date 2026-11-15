@@ -47,6 +47,7 @@ public class GestorProcesos {
      */
     public GestorProcesos(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
         reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, tipoAsignacion, cantidadParticiones, tamañosParticion);
+        historial = new ArrayList<>();
     }
 
     /**
@@ -178,6 +179,7 @@ public class GestorProcesos {
             bcp.guardarContexto(cpu);
             if ("TERMINADO".equals(bcp.getEstado()) || !tieneInstrucciones(bcp)) {
                 finalizarProceso(proceso);
+                guardarResultado();
             } else {
                 escribirBCPEnMemoria(proceso);
             }
@@ -185,6 +187,7 @@ public class GestorProcesos {
         } catch (IllegalArgumentException | IllegalStateException ex) {
             if (proceso == getActual()) {
                 finalizarProceso(proceso);
+                guardarResultado();
             }
             throw ex;
         }
@@ -195,6 +198,7 @@ public class GestorProcesos {
      */
     public void limpiar() {
         reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB(), asignador.getTipoAsignacion(), asignador.getDireccionesInicio().length, asignador.getTamañosParticion());
+        historial = new ArrayList<>();
     }
 
     /**
@@ -369,6 +373,34 @@ public class GestorProcesos {
     }
 
     /**
+     * Obtiene los resultados de las corridas terminadas.
+     *
+     * @return historial de corridas.
+     */
+    public List<ResultadoCorrida> getHistorial() {
+        return historial;
+    }
+
+    /**
+     * Comprueba si la corrida empezó y todos sus procesos terminaron.
+     *
+     * @return true si la corrida terminó.
+     */
+    public boolean estaCorridaTerminada() {
+        boolean terminada = corridaIniciada && !hayProcesosSinTerminar();
+        return terminada;
+    }
+
+    /**
+     * Guarda el resultado de la corrida en el historial si terminó.
+     */
+    private void guardarResultado() {
+        if (estaCorridaTerminada()) {
+            historial.add(new ResultadoCorrida(historial.size() + 1, planificador, asignador, procesosRegistrados, reloj, segundosOcio));
+        }
+    }
+
+    /**
      * Comprueba si la llegada y la prioridad aún se pueden editar.
      *
      * @return true antes del primer paso.
@@ -463,6 +495,9 @@ public class GestorProcesos {
         }
         if (!asignador.tieneEspacioPara(instrucciones.size())) {
             throw new IllegalArgumentException("El programa de " + instrucciones.size() + " posiciones no cabe con el tipo de asignación " + asignador.getTipoAsignacion() + ".");
+        }
+        if (estaCorridaTerminada()) {
+            throw new IllegalStateException("La corrida terminó; use Nueva corrida para ejecutar otra.");
         }
         int sinTerminar = 0;
         for (Proceso proceso : procesosRegistrados) {
