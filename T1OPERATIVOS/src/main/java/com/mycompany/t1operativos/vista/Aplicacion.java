@@ -302,6 +302,8 @@ public class Aplicacion extends JFrame {
         lblDistribucionDisco.setForeground(EstiloUI.TEXTO);
         barraMemoria = new EstiloUI.BarraDistribucion();
         barraDisco = new EstiloUI.BarraDistribucion();
+        barraMemoria.setPreferredSize(new Dimension(300, 14));
+        barraDisco.setPreferredSize(new Dimension(300, 14));
 
         // ---- Tarjeta de memoria principal ----
         JPanel tarjetaMemoria = crearTarjetaConfiguracion("Memoria principal");
@@ -350,21 +352,19 @@ public class Aplicacion extends JFrame {
         JPanel cuerpo = new JPanel(new GridBagLayout());
         cuerpo.setBackground(EstiloUI.FONDO);
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTH;
-        gbc.insets = new Insets(0, 0, 12, 0);
         gbc.gridy = 0;
+        gbc.weightx = 1;
+        gbc.weighty = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.NORTH;
+        gbc.insets = new Insets(0, 0, 0, 12);
+        gbc.gridx = 0;
         cuerpo.add(tarjetaMemoria, gbc);
-        gbc.gridy = 1;
+        gbc.gridx = 1;
         cuerpo.add(tarjetaDisco, gbc);
-        gbc.gridy = 2;
+        gbc.gridx = 2;
         gbc.insets = new Insets(0, 0, 0, 0);
         cuerpo.add(tarjetaPlanificacion, gbc);
-        gbc.gridy = 3;
-        gbc.weighty = 1;
-        cuerpo.add(Box.createVerticalGlue(), gbc);
         panel.add(cuerpo, BorderLayout.CENTER);
 
         selectorMemoria.addChangeListener(e -> actualizarDistribucionMemoria());
@@ -432,10 +432,10 @@ public class Aplicacion extends JFrame {
         JPanel textos = new JPanel();
         textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
         textos.setBackground(EstiloUI.PANEL);
-        JLabel etiquetaTitulo = new JLabel(titulo);
+        JLabel etiquetaTitulo = new JLabel("<html><div style='width:170px'>" + titulo + "</div></html>");
         etiquetaTitulo.setFont(EstiloUI.FUENTE_BASE.deriveFont(Font.BOLD));
         etiquetaTitulo.setForeground(EstiloUI.TEXTO);
-        JLabel etiquetaDescripcion = EstiloUI.crearEtiquetaSecundaria(descripcion);
+        JLabel etiquetaDescripcion = EstiloUI.crearEtiquetaSecundaria("<html><div style='width:170px'>" + descripcion + "</div></html>");
         etiquetaTitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
         etiquetaDescripcion.setAlignmentX(Component.LEFT_ALIGNMENT);
         textos.add(etiquetaTitulo);
@@ -1351,7 +1351,7 @@ public class Aplicacion extends JFrame {
         Color colorVirtual = EstiloUI.ACENTO_VIOLETA;
         lblDistribucionDisco.setText("<html>"
                 + EstiloUI.cuadroColor(colorIndice) + " Índices: <b>" + tamañoIndices + "</b> &nbsp;&nbsp;"
-                + EstiloUI.cuadroColor(colorDatos) + " Programas y datos: <b>" + tamañoDatos + "</b> &nbsp;&nbsp;"
+                + EstiloUI.cuadroColor(colorDatos) + " Programas y datos: <b>" + tamañoDatos + "</b><br>"
                 + EstiloUI.cuadroColor(colorVirtual) + " Virtual: <b>" + tamañoMemoriaVirtual + "</b>"
                 + " <font color='#7a8594'>(máximo " + maximoVirtual + ")</font></html>");
         barraDisco.setValores(new int[]{tamañoIndices, Math.max(0, tamañoDatos), tamañoMemoriaVirtual},
