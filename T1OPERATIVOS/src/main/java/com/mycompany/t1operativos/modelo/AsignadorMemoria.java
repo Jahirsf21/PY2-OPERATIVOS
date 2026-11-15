@@ -152,6 +152,30 @@ public class AsignadorMemoria {
     }
 
     /**
+     * Busca el primer bloque libre y continuo de un tamaño dentro de un rango de la RAM.
+     *
+     * @param inicio primera posición del rango.
+     * @param limite posición donde termina la búsqueda, sin incluirla.
+     * @param cantidad posiciones requeridas.
+     * @return inicio del bloque, o -1 si no hay.
+     */
+    private int buscarHueco(int inicio, int limite, int cantidad) {
+        int libres = 0;
+        for (int posicion = inicio; posicion < limite; posicion++) {
+            if (memoria.leer(posicion) == null) {
+                libres++;
+            } else {
+                libres = 0;
+            }
+            if (libres == cantidad) {
+                int inicioHueco = posicion - cantidad + 1;
+                return inicioHueco;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Ocupa la partición libre más pequeña donde quepa el programa; empata por menor dirección.
      *
      * @param cantidad posiciones del programa.
@@ -174,6 +198,16 @@ public class AsignadorMemoria {
     }
 
     /**
+     * Busca el primer hueco suficiente desde el inicio de la zona de usuario.
+     *
+     * @param cantidad posiciones del programa.
+     * @return inicio del hueco, o -1 si no hay.
+     */
+    private int firstFit(int cantidad) {
+        return buscarHueco(memoria.getInicioUsuario(), memoria.getTamañoTotal(), cantidad);
+    }
+
+    /**
      * Reserva espacio para un programa según el tipo de asignación.
      *
      * @param cantidad posiciones del programa.
@@ -184,6 +218,8 @@ public class AsignadorMemoria {
             case "Fija iguales":
             case "Fija desiguales":
                 return asignarParticion(cantidad);
+            case "First Fit":
+                return firstFit(cantidad);
             default:
                 throw new IllegalStateException("Tipo de asignación no disponible: " + tipoAsignacion + ".");
         }
