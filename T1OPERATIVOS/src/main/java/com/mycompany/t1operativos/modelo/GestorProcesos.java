@@ -447,7 +447,7 @@ public class GestorProcesos {
             }
             throw new IllegalArgumentException(mensaje);
         }
-        if (instrucciones.size() > memoria.getTamañoTotal() - memoria.getInicioUsuario()) {
+        if (instrucciones.size() > memoria.getTamañoUsuario()) {
             throw new IllegalArgumentException("El programa no cabe en el espacio de usuario.");
         }
         int sinTerminar = 0;

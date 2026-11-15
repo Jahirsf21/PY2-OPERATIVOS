@@ -147,4 +147,14 @@ public class Memoria {
     public int getTamañoTotal() {
         return memoria.length;
     }
+
+    /**
+     * Obtiene el tamaño de la zona de usuario.
+     *
+     * @return la cantidad de posiciones desde el inicio de usuario hasta el final.
+     */
+    public int getTamañoUsuario() {
+        int tamaño = memoria.length - inicioUsuario;
+        return tamaño;
+    }
 }
