@@ -19,14 +19,10 @@ public class GestorProcesos {
     private Disco disco;
     private CargadorArchivos cargador;
     private GestorArchivos gestorArchivos;
-    private Planificador planificador;
-    private Despachador despachador;
     private List<Proceso> procesosRegistrados;
     private Queue<Proceso> colaTrabajos;
     private int reloj;
-    private int segundosOcio;
     private boolean corridaIniciada;
-    private int quantumUsado;
     private List<ResultadoCorrida> historial;
     private List<Nucleo> nucleos;
 
@@ -99,71 +95,108 @@ public class GestorProcesos {
         }
         corridaIniciada = true;
         boolean cambio = false;
-        boolean agotado = getActual() != null && planificador.agotoQuantum(getActual(), quantumUsado);
-        if (agotado) {
-            planificador.bajarNivel(getActual());
-        }
-        if (agotado && planificador.hayAceptadosEsperando()) {
-            expropiarActual();
-            cambio = true;
-            agotado = false;
-        }
-        if (planificador.subirNivel()) {
-            cambio = true;
+        boolean[] agotados = new boolean[nucleos.size()];
+        for (int i = 0; i < nucleos.size(); i++) {
+            Nucleo nucleo = nucleos.get(i);
+            Planificador planificador = nucleo.getPlanificador();
+            Proceso actual = nucleo.getDespachador().getActual();
+            boolean agotado = actual != null && planificador.agotoQuantum(actual, nucleo.getQuantumUsado());
+            if (agotado) {
+                planificador.bajarNivel(actual);
+            }
+            if (agotado && planificador.hayAceptadosEsperando()) {
+                expropiarActual(nucleo);
+                cambio = true;
+                agotado = false;
+            }
+            if (planificador.subirNivel()) {
+                cambio = true;
+            }
+            agotados[i] = agotado;
         }
         admitirLlegadas();
         if (admitirEnMemoria()) {
             cambio = true;
         }
-        if (planificador.aceptarNuevos(getActual())) {
-            cambio = true;
-        }
-        if (agotado) {
-            expropiarActual();
-            cambio = true;
-        } else if (planificador.debeExpropiar(getActual(), reloj)) {
-            interrumpirActual();
-            cambio = true;
+        for (int i = 0; i < nucleos.size(); i++) {
+            Nucleo nucleo = nucleos.get(i);
+            Planificador planificador = nucleo.getPlanificador();
+            if (planificador.aceptarNuevos(nucleo.getDespachador().getActual())) {
+                cambio = true;
+            }
+            if (agotados[i]) {
+                expropiarActual(nucleo);
+                cambio = true;
+            } else if (planificador.debeExpropiar(nucleo.getDespachador().getActual(), reloj)) {
+                interrumpirActual(nucleo);
+                cambio = true;
+            }
         }
         return cambio;
     }
 
     /**
-     * Entrega la CPU libre al siguiente proceso listo.
+     * Entrega cada CPU libre al siguiente proceso listo de su cola.
      *
-     * @return true si despachó un proceso.
+     * @return true si despachó algún proceso.
      */
     public boolean despacharPaso() {
-        if (getActual() == null && planificador.hayProcesosListos()) {
-            Proceso siguiente = planificador.obtenerSiguiente(reloj);
-            despachador.despachar(siguiente, reloj);
-            quantumUsado = siguiente.getQuantumUsado();
-            siguiente.setQuantumUsado(0);
-            siguiente.setTiempoEspera(0);
-            return true;
+        boolean despacho = false;
+        for (Nucleo nucleo : nucleos) {
+            Planificador planificador = nucleo.getPlanificador();
+            if (nucleo.getDespachador().getActual() == null && planificador.hayProcesosListos()) {
+                Proceso siguiente = planificador.obtenerSiguiente(reloj);
+                nucleo.getDespachador().despachar(siguiente, reloj);
+                nucleo.setQuantumUsado(siguiente.getQuantumUsado());
+                siguiente.setQuantumUsado(0);
+                siguiente.setTiempoEspera(0);
+                despacho = true;
+            }
         }
-        return false;
+        return despacho;
     }
 
     /**
-     * Ejecuta una instrucción del actual, o registra ocio, y avanza el reloj.
+     * Ejecuta una instrucción en cada CPU, o registra su ocio, y avanza el reloj un segundo.
      *
-     * @return salida de INT 10H, o null si no hubo salida.
+     * @return salidas de INT 10H, o null si no hubo salida.
      */
     public String completarPaso() {
         if (!puedeEjecutar()) {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
-        planificador.contarEspera();
-        planificador.aumentarPrioridades(getActual());
-        if (getActual() == null) {
-            segundosOcio++;
-            reloj++;
+        for (Nucleo nucleo : nucleos) {
+            nucleo.getPlanificador().contarEspera();
+            nucleo.getPlanificador().aumentarPrioridades(nucleo.getDespachador().getActual());
+        }
+        reloj++;
+        String salida = null;
+        for (Nucleo nucleo : nucleos) {
+            String salidaNucleo = ejecutarNucleo(nucleo);
+            if (salidaNucleo != null && salida == null) {
+                salida = salidaNucleo;
+            } else if (salidaNucleo != null) {
+                salida = salida + "\n" + salidaNucleo;
+            }
+        }
+        guardarResultado();
+        return salida;
+    }
+
+    /**
+     * Ejecuta una instrucción del proceso actual de una CPU, o le suma un segundo de ocio.
+     *
+     * @param nucleo CPU que ejecuta.
+     * @return salida de INT 10H, o null si no hubo salida.
+     */
+    private String ejecutarNucleo(Nucleo nucleo) {
+        Proceso proceso = nucleo.getDespachador().getActual();
+        if (proceso == null) {
+            nucleo.aumentarOcio();
             return null;
         }
-        Proceso proceso = getActual();
         BCP bcp = proceso.getBCP();
-        CPU cpu = getCPU();
+        CPU cpu = nucleo.getDespachador().getCPU();
         try {
             if (cpu.getPc() < bcp.getInicioMemoria() || cpu.getPc() > bcp.getFinMemoria()) {
                 throw new IllegalStateException("El PC está fuera de los límites del programa.");
@@ -174,19 +207,17 @@ public class GestorProcesos {
             }
             cpu.cargarInstruccion(instruccion);
             bcp.aumentarTiempoEmpleado();
-            quantumUsado++;
-            reloj++;
-            String salida = ejecutarInstruccion(instruccion);
+            nucleo.aumentarQuantumUsado();
+            String salida = ejecutarInstruccion(nucleo, instruccion);
             bcp.guardarContexto(cpu);
             if ("TERMINADO".equals(bcp.getEstado()) || !tieneInstrucciones(bcp)) {
                 finalizarProceso(proceso);
-                guardarResultado();
             } else {
                 escribirBCPEnMemoria(proceso);
             }
             return salida;
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            if (proceso == getActual()) {
+            if (proceso == nucleo.getDespachador().getActual()) {
                 finalizarProceso(proceso);
                 guardarResultado();
             }
@@ -227,8 +258,15 @@ public class GestorProcesos {
                 if (!asignador.tieneEspacioPara(tamaño)) {
                     throw new IllegalArgumentException("El programa de " + tamaño + " posiciones no cabe con el tipo de asignación " + asignador.getTipoAsignacion() + ".");
                 }
-                if (procesosRegistrados.size() >= 5) {
-                    throw new IllegalStateException("Ya hay cinco procesos no terminados.");
+                Nucleo nucleo = null;
+                int cpuAnterior = anterior.getBCP().getCpuActual();
+                if (cpuAnterior >= 1 && cpuAnterior <= nucleos.size() && contarSinTerminar(nucleos.get(cpuAnterior - 1)) < 5) {
+                    nucleo = nucleos.get(cpuAnterior - 1);
+                } else {
+                    nucleo = elegirNucleo();
+                }
+                if (nucleo == null) {
+                    throw new IllegalStateException("Todas las CPU tienen cinco procesos no terminados.");
                 }
                 List<String[]> instrucciones = new ArrayList<>();
                 for (int posicion = inicio; posicion < inicio + tamaño; posicion++) {
@@ -238,6 +276,7 @@ public class GestorProcesos {
                 int posicionIndice = gestorArchivos.registrarPrograma(entrada[0], instrucciones);
                 BCP bcp = new BCP(bcpAnterior.getIdProceso(), bcpAnterior.getPrioridad(), tamaño, bcpAnterior.getLlegada());
                 bcp.setBoletos(bcpAnterior.getBoletos());
+                bcp.setCpuActual(nucleo.getNumero());
                 procesosRegistrados.add(new Proceso(bcp, posicionIndice));
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 mensajes.add(entrada[0] + ": " + ex.getMessage());
@@ -250,6 +289,7 @@ public class GestorProcesos {
      * Reinicia la simulación conservando capacidades.
      */
     public void limpiar() {
+        Planificador planificador = nucleos.get(0).getPlanificador();
         reiniciarRecursos(memoria.getTamañoTotal(), disco.getTamañoTotal(), disco.getTamañoTotal() - disco.getInicioMemoriaVirtual(), planificador.getAlgoritmo(), planificador.getQuantum(), planificador.getQuantumsNivel(), planificador.getLimiteEspera(), planificador.getTasaA(), planificador.getTasaB(), asignador.getTipoAsignacion(), asignador.getDireccionesInicio().length, asignador.getTamañosParticion());
         historial = new ArrayList<>();
     }
@@ -282,21 +322,30 @@ public class GestorProcesos {
     }
 
     /**
-     * Obtiene la CPU compartida.
+     * Obtiene la CPU 1.
      *
-     * @return CPU del despachador.
+     * @return CPU del despachador de la CPU 1.
      */
     public CPU getCPU() {
-        return despachador.getCPU();
+        return nucleos.get(0).getDespachador().getCPU();
     }
 
     /**
-     * Obtiene el proceso que tiene CPU.
+     * Obtiene el proceso que tiene la CPU 1.
      *
      * @return proceso actual, o null.
      */
     public Proceso getActual() {
-        return despachador.getActual();
+        return nucleos.get(0).getDespachador().getActual();
+    }
+
+    /**
+     * Obtiene las CPU del simulador.
+     *
+     * @return núcleos en orden de número.
+     */
+    public List<Nucleo> getNucleos() {
+        return nucleos;
     }
 
     /**
@@ -323,7 +372,7 @@ public class GestorProcesos {
      * @return nombre del algoritmo.
      */
     public String getAlgoritmo() {
-        return planificador.getAlgoritmo();
+        return nucleos.get(0).getPlanificador().getAlgoritmo();
     }
 
     /**
@@ -332,7 +381,7 @@ public class GestorProcesos {
      * @return segundos por turno.
      */
     public int getQuantum() {
-        return planificador.getQuantum();
+        return nucleos.get(0).getPlanificador().getQuantum();
     }
 
     /**
@@ -341,7 +390,7 @@ public class GestorProcesos {
      * @return quantums por nivel.
      */
     public int[] getQuantumsNivel() {
-        return planificador.getQuantumsNivel();
+        return nucleos.get(0).getPlanificador().getQuantumsNivel();
     }
 
     /**
@@ -350,7 +399,7 @@ public class GestorProcesos {
      * @return límite de espera.
      */
     public int getLimiteEspera() {
-        return planificador.getLimiteEspera();
+        return nucleos.get(0).getPlanificador().getLimiteEspera();
     }
 
     /**
@@ -359,7 +408,7 @@ public class GestorProcesos {
      * @return tasa A.
      */
     public int getTasaA() {
-        return planificador.getTasaA();
+        return nucleos.get(0).getPlanificador().getTasaA();
     }
 
     /**
@@ -368,7 +417,7 @@ public class GestorProcesos {
      * @return tasa B.
      */
     public int getTasaB() {
-        return planificador.getTasaB();
+        return nucleos.get(0).getPlanificador().getTasaB();
     }
 
     /**
@@ -378,8 +427,9 @@ public class GestorProcesos {
      * @return segundos usados; del turno en curso si tiene la CPU.
      */
     public int getQuantumUsado(Proceso proceso) {
-        if (proceso == getActual()) {
-            return quantumUsado;
+        Nucleo nucleo = getNucleo(proceso);
+        if (proceso == nucleo.getDespachador().getActual()) {
+            return nucleo.getQuantumUsado();
         }
         return proceso.getQuantumUsado();
     }
@@ -390,7 +440,7 @@ public class GestorProcesos {
      * @return boleto, total y ganador, o null si no hubo sorteo.
      */
     public String getUltimoSorteo() {
-        return planificador.getUltimoSorteo();
+        return nucleos.get(0).getPlanificador().getUltimoSorteo();
     }
 
     /**
@@ -400,11 +450,12 @@ public class GestorProcesos {
      * @return servicio / ((reloj − llegada) / n), o 0 si acaba de llegar.
      */
     public double getRazon(Proceso proceso) {
-        int participantes = planificador.getListos().size();
-        if (getActual() != null) {
+        Nucleo nucleo = getNucleo(proceso);
+        int participantes = nucleo.getPlanificador().getListos().size();
+        if (nucleo.getDespachador().getActual() != null) {
             participantes++;
         }
-        return planificador.calcularRazonGS(proceso.getBCP(), reloj, participantes);
+        return nucleo.getPlanificador().calcularRazonGS(proceso.getBCP(), reloj, participantes);
     }
 
     /**
@@ -417,12 +468,61 @@ public class GestorProcesos {
     }
 
     /**
-     * Obtiene el ocio de la CPU.
+     * Obtiene el ocio de todas las CPU.
      *
-     * @return segundos sin proceso en ejecución.
+     * @return suma de los segundos sin proceso en ejecución.
      */
     public int getSegundosOcio() {
-        return segundosOcio;
+        int ocio = 0;
+        for (Nucleo nucleo : nucleos) {
+            ocio = ocio + nucleo.getSegundosOcio();
+        }
+        return ocio;
+    }
+
+    /**
+     * Obtiene la CPU a la que está asignado un proceso.
+     *
+     * @param proceso proceso registrado.
+     * @return núcleo de su CPU actual.
+     */
+    private Nucleo getNucleo(Proceso proceso) {
+        return nucleos.get(proceso.getBCP().getCpuActual() - 1);
+    }
+
+    /**
+     * Cuenta los procesos sin terminar asignados a una CPU.
+     *
+     * @param nucleo CPU consultada.
+     * @return cantidad de procesos no terminados.
+     */
+    private int contarSinTerminar(Nucleo nucleo) {
+        int cantidad = 0;
+        for (Proceso proceso : procesosRegistrados) {
+            BCP bcp = proceso.getBCP();
+            if (bcp.getCpuActual() == nucleo.getNumero() && !"TERMINADO".equals(bcp.getEstado())) {
+                cantidad++;
+            }
+        }
+        return cantidad;
+    }
+
+    /**
+     * Elige la CPU con menos procesos sin terminar; empata por más ocio y luego por menor número.
+     *
+     * @return núcleo elegido, o null si todas tienen cinco procesos sin terminar.
+     */
+    private Nucleo elegirNucleo() {
+        Nucleo elegido = null;
+        int menorCantidad = 0;
+        for (Nucleo nucleo : nucleos) {
+            int cantidad = contarSinTerminar(nucleo);
+            if (cantidad < 5 && (elegido == null || cantidad < menorCantidad || (cantidad == menorCantidad && nucleo.getSegundosOcio() > elegido.getSegundosOcio()))) {
+                elegido = nucleo;
+                menorCantidad = cantidad;
+            }
+        }
+        return elegido;
     }
 
     /**
@@ -453,7 +553,7 @@ public class GestorProcesos {
         if (estaCorridaTerminada()) {
             return historial.get(historial.size() - 1);
         }
-        return new ResultadoCorrida(historial.size() + 1, planificador, asignador, procesosRegistrados, reloj, segundosOcio);
+        return new ResultadoCorrida(historial.size() + 1, nucleos.get(0).getPlanificador(), asignador, procesosRegistrados, reloj, getSegundosOcio());
     }
 
     /**
@@ -461,7 +561,7 @@ public class GestorProcesos {
      */
     private void guardarResultado() {
         if (estaCorridaTerminada()) {
-            historial.add(new ResultadoCorrida(historial.size() + 1, planificador, asignador, procesosRegistrados, reloj, segundosOcio));
+            historial.add(new ResultadoCorrida(historial.size() + 1, nucleos.get(0).getPlanificador(), asignador, procesosRegistrados, reloj, getSegundosOcio()));
         }
     }
 
@@ -564,22 +664,18 @@ public class GestorProcesos {
         if (estaCorridaTerminada()) {
             throw new IllegalStateException("La corrida terminó; use Nueva corrida para ejecutar otra.");
         }
-        int sinTerminar = 0;
-        for (Proceso proceso : procesosRegistrados) {
-            if (!"TERMINADO".equals(proceso.getBCP().getEstado())) {
-                sinTerminar++;
-            }
-        }
-        if (sinTerminar >= 5) {
-            throw new IllegalStateException("Ya hay cinco procesos no terminados.");
+        Nucleo nucleo = elegirNucleo();
+        if (nucleo == null) {
+            throw new IllegalStateException("Todas las CPU tienen cinco procesos no terminados.");
         }
         int id = 1;
         if (!procesosRegistrados.isEmpty()) {
             id = procesosRegistrados.get(procesosRegistrados.size() - 1).getBCP().getIdProceso() + 1;
         }
         int posicionIndice = gestorArchivos.registrarPrograma(archivo.getName(), instrucciones);
-        Proceso proceso = new Proceso(new BCP(id, 1, instrucciones.size(), reloj), posicionIndice);
-        procesosRegistrados.add(proceso);
+        BCP bcp = new BCP(id, 1, instrucciones.size(), reloj);
+        bcp.setCpuActual(nucleo.getNumero());
+        procesosRegistrados.add(new Proceso(bcp, posicionIndice));
     }
 
     /**
@@ -660,7 +756,7 @@ public class GestorProcesos {
             bcp.setEstadoListo();
             escribirBCPEnMemoria(proceso);
             colaTrabajos.remove();
-            planificador.agregarListo(proceso);
+            getNucleo(proceso).getPlanificador().agregarListo(proceso);
             admitio = true;
         }
         actualizarEnlacesBCP();
@@ -731,15 +827,16 @@ public class GestorProcesos {
     /**
      * Ejecuta una instrucción completa en un segundo.
      *
+     * @param nucleo CPU que ejecuta.
      * @param instruccion instrucción cargada en IR.
      * @return salida de pantalla, o null.
      */
-    private String ejecutarInstruccion(String[] instruccion) {
-        CPU cpu = getCPU();
+    private String ejecutarInstruccion(Nucleo nucleo, String[] instruccion) {
+        CPU cpu = nucleo.getDespachador().getCPU();
         cpu.ejecutarInstruccion(instruccion);
         String salida = null;
         if (cpu.getInterrupcion() != null) {
-            salida = atenderInterrupcion(cpu.getInterrupcion());
+            salida = atenderInterrupcion(nucleo, cpu.getInterrupcion());
         }
         return salida;
     }
@@ -747,20 +844,21 @@ public class GestorProcesos {
     /**
      * Atiende la interrupción generada por la CPU.
      *
+     * @param nucleo CPU que generó la interrupción.
      * @param codigo código de la interrupción.
      * @return salida de pantalla, o null.
      */
-    private String atenderInterrupcion(String codigo) {
+    private String atenderInterrupcion(Nucleo nucleo, String codigo) {
         String salida = null;
         switch (codigo) {
             case "20H":
-                getActual().getBCP().setEstadoTerminado(reloj);
+                nucleo.getDespachador().getActual().getBCP().setEstadoTerminado(reloj);
                 break;
             case "10H":
-                salida = getCPU().getDx();
+                salida = nucleo.getDespachador().getCPU().getDx();
                 break;
             case "21H":
-                ejecutarServicioArchivo();
+                ejecutarServicioArchivo(nucleo);
                 break;
             default:
                 throw new IllegalArgumentException("La interrupción INT " + codigo + " todavía no está implementada.");
@@ -770,10 +868,12 @@ public class GestorProcesos {
 
     /**
      * Atiende el servicio de archivos seleccionado en AH.
+     *
+     * @param nucleo CPU que pidió el servicio.
      */
-    private void ejecutarServicioArchivo() {
-        BCP bcp = getActual().getBCP();
-        CPU cpu = getCPU();
+    private void ejecutarServicioArchivo(Nucleo nucleo) {
+        BCP bcp = nucleo.getDespachador().getActual().getBCP();
+        CPU cpu = nucleo.getDespachador().getCPU();
         switch (cpu.getAh()) {
             case 60:
                 gestorArchivos.crearArchivo(cpu.getDx());
@@ -810,22 +910,26 @@ public class GestorProcesos {
     }
 
     /**
-     * Expropia al proceso actual: vuelve a LISTO con su contexto guardado,
+     * Expropia al proceso actual de una CPU: vuelve a LISTO con su contexto guardado,
      * conserva su memoria y regresa a la cola de listos.
+     *
+     * @param nucleo CPU del proceso.
      */
-    private void expropiarActual() {
-        Proceso expropiado = despachador.expropiarActual();
+    private void expropiarActual(Nucleo nucleo) {
+        Proceso expropiado = nucleo.getDespachador().expropiarActual();
         escribirBCPEnMemoria(expropiado);
-        planificador.agregarListo(expropiado);
+        nucleo.getPlanificador().agregarListo(expropiado);
     }
 
     /**
-     * Interrumpe al actual porque otro listo tiene preferencia y lo devuelve a listos.
+     * Interrumpe al actual de una CPU porque otro listo tiene preferencia y lo devuelve a listos.
+     *
+     * @param nucleo CPU del proceso.
      */
-    private void interrumpirActual() {
-        Proceso interrumpido = despachador.expropiarActual();
+    private void interrumpirActual(Nucleo nucleo) {
+        Proceso interrumpido = nucleo.getDespachador().expropiarActual();
         escribirBCPEnMemoria(interrumpido);
-        planificador.reinsertarInterrumpido(interrumpido, quantumUsado);
+        nucleo.getPlanificador().reinsertarInterrumpido(interrumpido, nucleo.getQuantumUsado());
     }
 
     /**
@@ -835,7 +939,8 @@ public class GestorProcesos {
      */
     private void finalizarProceso(Proceso proceso) {
         BCP bcp = proceso.getBCP();
-        boolean esActual = proceso == getActual();
+        Nucleo nucleo = getNucleo(proceso);
+        boolean esActual = proceso == nucleo.getDespachador().getActual();
         int posicion = proceso.getPosicionBCP();
         int cantidadCampos = getCamposBCP().length;
         if (posicion < 0) {
@@ -844,7 +949,7 @@ public class GestorProcesos {
         bcp.setEstadoTerminado(reloj);
         gestorArchivos.cerrarArchivos(bcp);
         if (esActual) {
-            despachador.retirarActual();
+            nucleo.getDespachador().retirarActual();
         }
         memoria.liberarUsuario(bcp.getInicioMemoria(), bcp.getAlcance());
         asignador.liberar(bcp.getInicioMemoria());
@@ -884,20 +989,17 @@ public class GestorProcesos {
         AsignadorMemoria nuevoAsignador = new AsignadorMemoria(nuevaMemoria, tipoAsignacion, cantidadParticiones, tamañosParticion);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
-        Planificador nuevoPlanificador = new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB);
-        Despachador nuevoDespachador = new Despachador(new CPU());
+        List<Nucleo> nuevosNucleos = new ArrayList<>();
+        nuevosNucleos.add(new Nucleo(1, new Planificador(algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB), new Despachador(new CPU())));
         memoria = nuevaMemoria;
         asignador = nuevoAsignador;
         disco = nuevoDisco;
         cargador = nuevoCargador;
-        planificador = nuevoPlanificador;
-        despachador = nuevoDespachador;
+        nucleos = nuevosNucleos;
         procesosRegistrados = new ArrayList<>();
         gestorArchivos = new GestorArchivos(disco, procesosRegistrados);
         colaTrabajos = new ArrayDeque<>();
         reloj = 0;
-        segundosOcio = 0;
         corridaIniciada = false;
-        quantumUsado = 0;
     }
 }
