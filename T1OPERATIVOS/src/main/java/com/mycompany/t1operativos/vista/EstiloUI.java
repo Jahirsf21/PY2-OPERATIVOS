@@ -91,6 +91,8 @@ public final class EstiloUI {
     public static final Color COLOR_KERNEL = new Color(0xE8, 0xF5, 0xE9);
     public static final Color COLOR_KERNEL_BCP = new Color(0xFF, 0xF3, 0xDC);
     public static final Color COLOR_USUARIO = new Color(0xD8, 0xE4, 0xFF);
+    /** Celda libre dentro de una partición ocupada (fragmentación interna). */
+    public static final Color COLOR_FRAGMENTACION = new Color(0xFD, 0xE4, 0xE4);
 
     /** Zonas del disco. */
     public static final Color COLOR_DISCO_INDICE = new Color(0xE3, 0xF2, 0xFD);

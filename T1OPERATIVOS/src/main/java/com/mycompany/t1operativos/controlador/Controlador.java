@@ -1,5 +1,6 @@
 package com.mycompany.t1operativos.controlador;
 
+import com.mycompany.t1operativos.modelo.AsignadorMemoria;
 import com.mycompany.t1operativos.modelo.BCP;
 import com.mycompany.t1operativos.modelo.Disco;
 import com.mycompany.t1operativos.modelo.GestorProcesos;
@@ -308,11 +309,14 @@ public class Controlador {
         DefaultTableModel modelo = vista.getModeloMemoria();
         modelo.setRowCount(0);
         if (gestor == null || gestor.getProcesosRegistrados().isEmpty()) {
+            vista.mostrarResumenMemoria("Asignación: " + vista.getTipoAsignacionSeleccionado());
             return;
         }
         Memoria memoria = gestor.getMemoria();
+        AsignadorMemoria asignador = gestor.getAsignador();
         for (int posicion = 0; posicion < memoria.getTamañoTotal(); posicion++) {
             String contenido = "";
+            String particion = "";
             String[] valor = memoria.leer(posicion);
             if (valor != null) {
                 if (memoria.esDireccionKernel(posicion)) {
@@ -321,8 +325,63 @@ public class Controlador {
                     contenido = parser.traducirInstruccion(valor);
                 }
             }
-            modelo.addRow(new Object[]{posicion, contenido});
+            int indice = asignador.getParticion(posicion);
+            if (indice >= 0) {
+                particion = "P" + indice;
+                if (valor == null && asignador.estaOcupada(indice)) {
+                    particion = particion + " · frag. interna";
+                }
+            }
+            modelo.addRow(new Object[]{posicion, contenido, particion});
         }
+        vista.mostrarResumenMemoria(resumirMemoria(memoria, asignador));
+    }
+
+    /**
+     * Arma el resumen de la zona de usuario: particiones ocupadas y fragmentación interna, o huecos libres.
+     *
+     * @param memoria RAM de la simulación.
+     * @param asignador asignador de la zona de usuario.
+     * @return texto del resumen.
+     */
+    private String resumirMemoria(Memoria memoria, AsignadorMemoria asignador) {
+        String texto = "Asignación: " + asignador.getTipoAsignacion();
+        int[] inicios = asignador.getDireccionesInicio();
+        if (inicios.length > 0) {
+            int ocupadas = 0;
+            int fragmentacion = 0;
+            for (int i = 0; i < inicios.length; i++) {
+                if (asignador.estaOcupada(i)) {
+                    ocupadas++;
+                    for (int posicion = inicios[i]; posicion < inicios[i] + asignador.getTamañosParticion()[i]; posicion++) {
+                        if (memoria.leer(posicion) == null) {
+                            fragmentacion++;
+                        }
+                    }
+                }
+            }
+            texto = texto + " · Particiones ocupadas " + ocupadas + " de " + inicios.length + " · Fragmentación interna " + fragmentacion;
+        } else {
+            String huecos = "";
+            int cantidadHuecos = 0;
+            int libres = 0;
+            int tamañoHueco = 0;
+            for (int posicion = memoria.getInicioUsuario(); posicion <= memoria.getTamañoTotal(); posicion++) {
+                if (posicion < memoria.getTamañoTotal() && memoria.leer(posicion) == null) {
+                    tamañoHueco++;
+                } else if (tamañoHueco > 0) {
+                    if (cantidadHuecos > 0) {
+                        huecos = huecos + ", ";
+                    }
+                    huecos = huecos + tamañoHueco;
+                    cantidadHuecos++;
+                    libres = libres + tamañoHueco;
+                    tamañoHueco = 0;
+                }
+            }
+            texto = texto + " · Huecos " + cantidadHuecos + " (" + huecos + ") · Libre " + libres;
+        }
+        return texto;
     }
 
     /**

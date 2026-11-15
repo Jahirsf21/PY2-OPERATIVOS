@@ -102,6 +102,8 @@ public class Aplicacion extends JFrame {
     private JSpinner selectorCantidadParticiones;
     /** Tamaños de las particiones fijas desiguales. */
     private JTextField selectorTamañosParticion;
+    /** Resumen de la asignación de la zona de usuario. */
+    private JLabel lblResumenMemoria;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
@@ -496,7 +498,7 @@ public class Aplicacion extends JFrame {
         recursos.setBackground(EstiloUI.FONDO);
 
         // ---- RAM ----
-        modeloMemoria = new DefaultTableModel(new Object[]{"Posición", "Valor en memoria"}, 0) {
+        modeloMemoria = new DefaultTableModel(new Object[]{"Posición", "Valor en memoria", "Partición"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -508,7 +510,7 @@ public class Aplicacion extends JFrame {
         tablaMemoria.setRowSelectionAllowed(true);
         tablaMemoria.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tablaMemoria.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        int[] anchosMemoria = {76, 260};
+        int[] anchosMemoria = {76, 230, 130};
         for (int i = 0; i < anchosMemoria.length; i++) {
             TableColumn columna = tablaMemoria.getColumnModel().getColumn(i);
             columna.setMinWidth(anchosMemoria[i]);
@@ -520,9 +522,20 @@ public class Aplicacion extends JFrame {
         tablaMemoria.setPreferredScrollableViewportSize(new Dimension(tablaMemoria.getColumnModel().getTotalColumnWidth(), tablaMemoria.getPreferredScrollableViewportSize().height));
         JPanel panelMemoria = EstiloUI.crearTarjetaConTitulo("RAM", EstiloUI.iconoTarjetaRAM(),
                 EstiloUI.PRIMARIO, EstiloUI.crearScroll(tablaMemoria));
-        panelMemoria.add(crearLeyenda(EstiloUI.COLOR_KERNEL, "Kernel",
-                EstiloUI.COLOR_KERNEL_BCP, "BCP",
-                EstiloUI.FONDO, "Usuario"), BorderLayout.SOUTH);
+        JPanel pieMemoria = new JPanel();
+        pieMemoria.setLayout(new BoxLayout(pieMemoria, BoxLayout.Y_AXIS));
+        pieMemoria.setOpaque(false);
+        JLabel leyendaMemoria = EstiloUI.crearEtiquetaSecundaria("<html>"
+                + EstiloUI.cuadroColor(EstiloUI.COLOR_KERNEL) + " Kernel &nbsp;&nbsp;"
+                + EstiloUI.cuadroColor(EstiloUI.COLOR_KERNEL_BCP) + " BCP &nbsp;&nbsp;"
+                + EstiloUI.cuadroColor(EstiloUI.FONDO) + " Usuario &nbsp;&nbsp;"
+                + EstiloUI.cuadroColor(EstiloUI.COLOR_FRAGMENTACION) + " Frag. interna</html>");
+        leyendaMemoria.setBorder(BorderFactory.createEmptyBorder(8, 2, 0, 2));
+        lblResumenMemoria = EstiloUI.crearEtiquetaSecundaria("");
+        lblResumenMemoria.setBorder(BorderFactory.createEmptyBorder(4, 2, 0, 2));
+        pieMemoria.add(leyendaMemoria);
+        pieMemoria.add(lblResumenMemoria);
+        panelMemoria.add(pieMemoria, BorderLayout.SOUTH);
         recursos.add(panelMemoria, BorderLayout.WEST);
 
         // ---- Disco ----
@@ -1473,6 +1486,15 @@ public class Aplicacion extends JFrame {
      */
     public DefaultTableModel getModeloMemoria() { return modeloMemoria; }
 
+    /**
+     * Muestra el resumen de la asignación de la zona de usuario.
+     *
+     * @param texto resumen de particiones o huecos.
+     */
+    public void mostrarResumenMemoria(String texto) {
+        lblResumenMemoria.setText(texto);
+    }
+
     // ================================================================
     // RENDERERS
     // ================================================================
@@ -1492,6 +1514,9 @@ public class Aplicacion extends JFrame {
                     return EstiloUI.COLOR_KERNEL;
                 }
                 return EstiloUI.COLOR_KERNEL_BCP;
+            }
+            if (tabla.getValueAt(fila, 2) != null && tabla.getValueAt(fila, 2).toString().endsWith("frag. interna")) {
+                return EstiloUI.COLOR_FRAGMENTACION;
             }
             return super.fondo(tabla, valor, fila, columna);
         }
