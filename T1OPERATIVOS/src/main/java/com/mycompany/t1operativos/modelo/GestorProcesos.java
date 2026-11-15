@@ -494,13 +494,13 @@ public class GestorProcesos {
      * Busca un bloque libre en RAM.
      *
      * @param inicio primera posición del rango.
-     * @param finExclusivo límite exclusivo del rango.
+     * @param limite posición donde termina la búsqueda, sin incluirla.
      * @param cantidad posiciones requeridas.
      * @return inicio libre, o -1.
      */
-    private int buscarBloqueMemoria(int inicio, int finExclusivo, int cantidad) {
+    private int buscarBloqueMemoria(int inicio, int limite, int cantidad) {
         int libres = 0;
-        for (int posicion = inicio; posicion < finExclusivo; posicion++) {
+        for (int posicion = inicio; posicion < limite; posicion++) {
             if (memoria.leer(posicion) == null) {
                 libres++;
             } else {
