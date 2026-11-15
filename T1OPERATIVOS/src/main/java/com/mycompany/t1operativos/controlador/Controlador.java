@@ -191,6 +191,15 @@ public class Controlador {
             if (salida != null) {
                 vista.imprimirPantalla(salida);
             }
+            List<String> errores = gestor.getErroresPaso();
+            if (!errores.isEmpty()) {
+                String mensaje = errores.get(0);
+                for (int i = 1; i < errores.size(); i++) {
+                    mensaje = mensaje + "\n" + errores.get(i);
+                }
+                terminarPasoConError(new IllegalStateException(mensaje));
+                return;
+            }
             actualizarVista();
         } catch (IllegalArgumentException | IllegalStateException ex) {
             terminarPasoConError(ex);

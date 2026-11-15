@@ -25,6 +25,7 @@ public class GestorProcesos {
     private boolean corridaIniciada;
     private List<ResultadoCorrida> historial;
     private List<Nucleo> nucleos;
+    private List<String> erroresPaso;
 
     /**
      * Construye los recursos de la simulación.
@@ -82,7 +83,15 @@ public class GestorProcesos {
     public String ejecutarPaso() {
         admitirPaso();
         despacharPaso();
-        return completarPaso();
+        String salida = completarPaso();
+        if (!erroresPaso.isEmpty()) {
+            String mensaje = erroresPaso.get(0);
+            for (int i = 1; i < erroresPaso.size(); i++) {
+                mensaje = mensaje + "\n" + erroresPaso.get(i);
+            }
+            throw new IllegalStateException(mensaje);
+        }
+        return salida;
     }
 
     /**
@@ -171,9 +180,19 @@ public class GestorProcesos {
             nucleo.getPlanificador().aumentarPrioridades(nucleo.getDespachador().getActual());
         }
         reloj++;
+        erroresPaso = new ArrayList<>();
         String salida = null;
         for (Nucleo nucleo : nucleos) {
-            String salidaNucleo = ejecutarNucleo(nucleo);
+            String salidaNucleo = null;
+            try {
+                salidaNucleo = ejecutarNucleo(nucleo);
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                String error = ex.getMessage();
+                if (nucleos.size() > 1) {
+                    error = "CPU " + nucleo.getNumero() + ": " + error;
+                }
+                erroresPaso.add(error);
+            }
             if (salidaNucleo != null && nucleos.size() > 1) {
                 salidaNucleo = "CPU " + nucleo.getNumero() + ": " + salidaNucleo;
             }
@@ -223,7 +242,6 @@ public class GestorProcesos {
         } catch (IllegalArgumentException | IllegalStateException ex) {
             if (proceso == nucleo.getDespachador().getActual()) {
                 finalizarProceso(proceso);
-                guardarResultado();
             }
             throw ex;
         }
@@ -342,6 +360,15 @@ public class GestorProcesos {
      */
     public Proceso getActual() {
         return nucleos.get(0).getDespachador().getActual();
+    }
+
+    /**
+     * Obtiene los errores de las CPU en el último segundo ejecutado.
+     *
+     * @return mensajes de error, vacío si no hubo.
+     */
+    public List<String> getErroresPaso() {
+        return erroresPaso;
     }
 
     /**
@@ -1012,5 +1039,6 @@ public class GestorProcesos {
         colaTrabajos = new ArrayDeque<>();
         reloj = 0;
         corridaIniciada = false;
+        erroresPaso = new ArrayList<>();
     }
 }
