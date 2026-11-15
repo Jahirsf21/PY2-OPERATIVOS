@@ -152,6 +152,61 @@ public class AsignadorMemoria {
     }
 
     /**
+     * Ocupa la partición libre más pequeña donde quepa el programa; empata por menor dirección.
+     *
+     * @param cantidad posiciones del programa.
+     * @return inicio de la partición ocupada, o -1 si no hay una libre donde quepa.
+     */
+    private int asignarParticion(int cantidad) {
+        int indiceParticion = -1;
+        for (int i = 0; i < tamañosParticion.length; i++) {
+            if (!particionOcupada[i] && cantidad <= tamañosParticion[i]) {
+                if (indiceParticion < 0 || tamañosParticion[i] < tamañosParticion[indiceParticion]) {
+                    indiceParticion = i;
+                }
+            }
+        }
+        if (indiceParticion < 0) {
+            return -1;
+        }
+        particionOcupada[indiceParticion] = true;
+        return direccionesInicio[indiceParticion];
+    }
+
+    /**
+     * Reserva espacio para un programa según el tipo de asignación.
+     *
+     * @param cantidad posiciones del programa.
+     * @return inicio del bloque asignado, o -1 si ahora no hay espacio.
+     */
+    public int asignar(int cantidad) {
+        switch (tipoAsignacion) {
+            case "Fija iguales":
+            case "Fija desiguales":
+                return asignarParticion(cantidad);
+            default:
+                throw new IllegalStateException("Tipo de asignación no disponible: " + tipoAsignacion + ".");
+        }
+    }
+
+    /**
+     * Libera la partición que empieza en esa dirección.
+     *
+     * @param inicio dirección donde empieza el programa liberado.
+     */
+    public void liberar(int inicio) {
+        if ("Fija iguales".equals(tipoAsignacion) || "Fija desiguales".equals(tipoAsignacion)) {
+            for (int i = 0; i < direccionesInicio.length; i++) {
+                if (direccionesInicio[i] == inicio) {
+                    particionOcupada[i] = false;
+                    return;
+                }
+            }
+            throw new IllegalArgumentException("No hay una partición que empiece en " + inicio + ".");
+        }
+    }
+
+    /**
      * Obtiene la partición a la que pertenece una posición de la RAM.
      *
      * @param posicion dirección de la RAM.
