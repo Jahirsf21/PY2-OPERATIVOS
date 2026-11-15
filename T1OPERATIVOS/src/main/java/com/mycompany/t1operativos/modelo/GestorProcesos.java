@@ -194,6 +194,58 @@ public class GestorProcesos {
     }
 
     /**
+     * Inicia otra corrida desde cero con los mismos programas, sus llegadas, prioridades y boletos.
+     *
+     * @param tamañoMemoria posiciones de RAM.
+     * @param tamañoDisco posiciones de disco.
+     * @param tamañoMemoriaVirtual posiciones reservadas en disco.
+     * @param algoritmo algoritmo de planificación.
+     * @param quantum segundos por turno en RR.
+     * @param quantumsNivel quantum de cada nivel de MLFQ.
+     * @param limiteEspera segundos de espera para subir de nivel en MLFQ.
+     * @param tasaA aumento de prioridad por segundo de los nuevos en SRR.
+     * @param tasaB aumento de prioridad por segundo de los aceptados en SRR.
+     * @param tipoAsignacion tipo de asignación de la zona de usuario.
+     * @param cantidadParticiones cantidad de particiones para Fija iguales.
+     * @param tamañosParticion tamaño de cada partición para Fija desiguales.
+     * @return mensajes de programas que no se pudieron registrar.
+     */
+    public List<String> nuevaCorrida(int tamañoMemoria, int tamañoDisco, int tamañoMemoriaVirtual, String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion) {
+        if (!estaCorridaTerminada()) {
+            throw new IllegalStateException("Solo se inicia una nueva corrida cuando la actual terminó.");
+        }
+        Disco discoAnterior = disco;
+        List<Proceso> procesosAnteriores = procesosRegistrados;
+        reiniciarRecursos(tamañoMemoria, tamañoDisco, tamañoMemoriaVirtual, algoritmo, quantum, quantumsNivel, limiteEspera, tasaA, tasaB, tipoAsignacion, cantidadParticiones, tamañosParticion);
+        List<String> mensajes = new ArrayList<>();
+        for (Proceso anterior : procesosAnteriores) {
+            String[] entrada = discoAnterior.leer(anterior.getPosicionIndice());
+            int inicio = Integer.parseInt(entrada[1]);
+            int tamaño = Integer.parseInt(entrada[2]);
+            try {
+                if (!asignador.tieneEspacioPara(tamaño)) {
+                    throw new IllegalArgumentException("El programa de " + tamaño + " posiciones no cabe con el tipo de asignación " + asignador.getTipoAsignacion() + ".");
+                }
+                if (procesosRegistrados.size() >= 5) {
+                    throw new IllegalStateException("Ya hay cinco procesos no terminados.");
+                }
+                List<String[]> instrucciones = new ArrayList<>();
+                for (int posicion = inicio; posicion < inicio + tamaño; posicion++) {
+                    instrucciones.add(discoAnterior.leer(posicion));
+                }
+                BCP bcpAnterior = anterior.getBCP();
+                int posicionIndice = gestorArchivos.registrarPrograma(entrada[0], instrucciones);
+                BCP bcp = new BCP(bcpAnterior.getIdProceso(), bcpAnterior.getPrioridad(), tamaño, bcpAnterior.getLlegada());
+                bcp.setBoletos(bcpAnterior.getBoletos());
+                procesosRegistrados.add(new Proceso(bcp, posicionIndice));
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                mensajes.add(entrada[0] + ": " + ex.getMessage());
+            }
+        }
+        return mensajes;
+    }
+
+    /**
      * Reinicia la simulación conservando capacidades.
      */
     public void limpiar() {
