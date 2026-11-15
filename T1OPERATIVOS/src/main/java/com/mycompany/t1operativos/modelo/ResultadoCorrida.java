@@ -94,4 +94,35 @@ public class ResultadoCorrida {
     public int getSegundosOcio() {
         return segundosOcio;
     }
+
+    /**
+     * Calcula el tiempo de retorno de un proceso: final menos llegada.
+     *
+     * @param proceso proceso de la corrida.
+     * @return tiempo de retorno, o -1 si no terminó.
+     */
+    public int calcularRetorno(Proceso proceso) {
+        BCP bcp = proceso.getBCP();
+        if (bcp.getTiempoFinal() < 0) {
+            return -1;
+        }
+        int retorno = bcp.getTiempoFinal() - bcp.getLlegada();
+        return retorno;
+    }
+
+    /**
+     * Calcula la razón entre el tiempo de retorno y el servicio de un proceso.
+     *
+     * @param proceso proceso de la corrida.
+     * @return Tr/Ts, o -1 si no terminó o no tuvo servicio.
+     */
+    public double calcularRazonRetorno(Proceso proceso) {
+        int retorno = calcularRetorno(proceso);
+        int servicio = proceso.getBCP().getTiempoEmpleadoSegundos();
+        if (retorno < 0 || servicio == 0) {
+            return -1;
+        }
+        double razon = (double) retorno / servicio;
+        return razon;
+    }
 }
