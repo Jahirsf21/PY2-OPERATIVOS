@@ -68,12 +68,12 @@ public class Planificador {
     }
 
     /**
-     * Comprueba si un algoritmo está implementado.
+     * Comprueba si un algoritmo está disponible.
      *
      * @param algoritmo nombre del algoritmo.
      * @return true si puede seleccionarse.
      */
-    public static boolean esAlgoritmoDisponible(String algoritmo) {
+    private boolean esAlgoritmoDisponible(String algoritmo) {
         boolean disponible = "FCFS".equals(algoritmo) || "SPN".equals(algoritmo) || "Prioridad".equals(algoritmo) || "HRRN".equals(algoritmo) || "SRT".equals(algoritmo) || "RR".equals(algoritmo) || "Lottery".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo) || "MLFQ".equals(algoritmo) || "SRR".equals(algoritmo);
         return disponible;
     }
