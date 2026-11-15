@@ -328,9 +328,6 @@ public class Controlador {
             int indice = asignador.getParticion(posicion);
             if (indice >= 0) {
                 particion = "P" + indice;
-                if (valor == null && asignador.estaOcupada(indice)) {
-                    particion = particion + " · frag. interna";
-                }
             }
             modelo.addRow(new Object[]{posicion, contenido, particion});
         }

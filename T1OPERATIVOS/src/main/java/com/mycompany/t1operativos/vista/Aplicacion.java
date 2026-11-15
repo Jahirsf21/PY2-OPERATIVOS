@@ -1515,10 +1515,41 @@ public class Aplicacion extends JFrame {
                 }
                 return EstiloUI.COLOR_KERNEL_BCP;
             }
-            if (tabla.getValueAt(fila, 2) != null && tabla.getValueAt(fila, 2).toString().endsWith("frag. interna")) {
+            if (esFragmentacion(tabla, fila)) {
                 return EstiloUI.COLOR_FRAGMENTACION;
             }
             return super.fondo(tabla, valor, fila, columna);
+        }
+
+        /**
+         * Indica si una celda está libre dentro de una partición cuyo inicio tiene programa.
+         *
+         * @param tabla tabla de la RAM.
+         * @param fila posición de la RAM.
+         * @return true si es fragmentación interna.
+         */
+        private boolean esFragmentacion(JTable tabla, int fila) {
+            Object particion = tabla.getValueAt(fila, 2);
+            if (particion == null || particion.toString().isEmpty() || !estaVacia(tabla, fila)) {
+                return false;
+            }
+            int inicio = fila;
+            while (inicio > 0 && particion.equals(tabla.getValueAt(inicio - 1, 2))) {
+                inicio--;
+            }
+            return !estaVacia(tabla, inicio);
+        }
+
+        /**
+         * Indica si una posición de la RAM no tiene contenido.
+         *
+         * @param tabla tabla de la RAM.
+         * @param fila posición de la RAM.
+         * @return true si está vacía.
+         */
+        private boolean estaVacia(JTable tabla, int fila) {
+            boolean vacia = tabla.getValueAt(fila, 1) == null || tabla.getValueAt(fila, 1).toString().isBlank();
+            return vacia;
         }
 
         @Override
