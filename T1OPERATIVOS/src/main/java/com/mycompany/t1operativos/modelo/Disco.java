@@ -16,7 +16,7 @@ public class Disco {
      *
      * @param tamañoTotal cantidad total de posiciones del disco.
      * @param inicioDatos primera posición del espacio de archivos.
-     * @param inicioMemoriaVirtual primera posición del respaldo de memoria virtual.
+     * @param inicioMemoriaVirtual primera posición de la zona de memoria virtual.
      */
     public Disco(int tamañoTotal, int inicioDatos, int inicioMemoriaVirtual) {
         if (tamañoTotal < 256) {
@@ -161,10 +161,10 @@ public class Disco {
     }
 
     /**
-     * Comprueba si una dirección pertenece al respaldo de memoria virtual.
+     * Comprueba si una dirección pertenece a la zona de memoria virtual.
      *
      * @param posicion dirección que se desea comprobar.
-     * @return {@code true} si la dirección pertenece a la zona reservada.
+     * @return {@code true} si la dirección pertenece a la zona de memoria virtual.
      */
     public boolean esDireccionMemoriaVirtual(int posicion) {
         validarDireccion(posicion);
@@ -191,9 +191,9 @@ public class Disco {
     }
 
     /**
-     * Obtiene la primera posición del respaldo de memoria virtual.
+     * Obtiene la primera posición de la zona de memoria virtual.
      *
-     * @return el inicio de la zona reservada.
+     * @return el inicio de la zona de memoria virtual.
      */
     public int getInicioMemoriaVirtual() {
         return inicioMemoriaVirtual;

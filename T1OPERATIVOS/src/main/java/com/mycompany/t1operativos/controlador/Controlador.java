@@ -113,7 +113,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || (destino.getProcesosRegistrados().isEmpty() && destino.getHistorial().isEmpty())) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado());
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado(), 0);
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -307,7 +307,7 @@ public class Controlador {
      */
     private void nuevaSimulacion() {
         try {
-            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado());
+            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado(), 0);
             vista.limpiarConsola();
             actualizarVista();
             if (!mensajes.isEmpty()) {
@@ -598,7 +598,7 @@ public class Controlador {
      * Arma el ocio de una simulación: el de la única CPU o el de cada CPU con varias.
      *
      * @param nucleos CPU de la simulación.
-     * @return texto como «2 s» o «1 = 0 s, 2 = 2 s».
+     * @return texto como "2 s" o "1 = 0 s, 2 = 2 s".
      */
     private String formatearOcio(List<Nucleo> nucleos) {
         if (nucleos.size() == 1) {
@@ -623,7 +623,7 @@ public class Controlador {
      * @param limiteEspera segundos para subir de nivel en MLFQ.
      * @param tasaA tasa de los nuevos en SRR.
      * @param tasaB tasa de los aceptados en SRR.
-     * @return texto como «RR (q = 2)».
+     * @return texto como "RR (q = 2)".
      */
     private String formatearAlgoritmo(String algoritmo, int quantum, int[] quantumsNivel, int limiteEspera, int tasaA, int tasaB) {
         String texto = algoritmo;

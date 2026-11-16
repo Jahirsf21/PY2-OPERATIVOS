@@ -365,7 +365,7 @@ public class AsignadorMemoria {
      * @param cantidad posiciones del programa.
      * @return páginas necesarias, contando la última aunque quede incompleta.
      */
-    private int contarPaginas(int cantidad) {
+    public int contarPaginas(int cantidad) {
         int paginas = (cantidad + tamañoPagina - 1) / tamañoPagina;
         return paginas;
     }

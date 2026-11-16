@@ -17,7 +17,7 @@ public class Proceso {
     private boolean aceptado;
     private int[] marcos;
     private int marcoMasAntiguo;
-    private int[] respaldoPaginas;
+    private int[] paginasEnDisco;
     private int regresoListo;
     private int fallosPagina;
 
@@ -41,7 +41,7 @@ public class Proceso {
         this.aceptado = false;
         this.marcos = null;
         this.marcoMasAntiguo = 0;
-        this.respaldoPaginas = null;
+        this.paginasEnDisco = null;
         this.regresoListo = -1;
         this.fallosPagina = 0;
     }
@@ -202,9 +202,9 @@ public class Proceso {
         }
         this.marcos = marcos;
         this.marcoMasAntiguo = 0;
-        this.respaldoPaginas = new int[paginas];
+        this.paginasEnDisco = new int[paginas];
         for (int i = 0; i < paginas; i++) {
-            respaldoPaginas[i] = -1;
+            paginasEnDisco[i] = -1;
         }
     }
 
@@ -234,40 +234,40 @@ public class Proceso {
     }
 
     /**
-     * Obtiene la posición de una página en la reserva.
+     * Obtiene la posición de una página en la memoria virtual.
      *
      * @param pagina número de página.
-     * @return posición en la reserva, o -1 si no está guardada.
+     * @return posición en la memoria virtual, o -1 si no está guardada.
      */
-    public int getRespaldo(int pagina) {
-        return respaldoPaginas[pagina];
+    public int getPaginaEnDisco(int pagina) {
+        return paginasEnDisco[pagina];
     }
 
     /**
-     * Registra la posición de una página en la reserva.
+     * Registra la posición de una página en la memoria virtual.
      *
      * @param pagina número de página.
-     * @param posicion posición en la reserva, o -1.
+     * @param posicion posición en la memoria virtual, o -1.
      */
-    public void setRespaldo(int pagina, int posicion) {
-        respaldoPaginas[pagina] = posicion;
+    public void setPaginaEnDisco(int pagina, int posicion) {
+        paginasEnDisco[pagina] = posicion;
     }
 
     /**
-     * Obtiene la posición de cada página en la reserva.
+     * Obtiene la posición de cada página en la memoria virtual.
      *
-     * @return posiciones en la reserva, o null sin marcos.
+     * @return posiciones en la memoria virtual, o null sin marcos.
      */
-    public int[] getRespaldoPaginas() {
-        return respaldoPaginas;
+    public int[] getPaginasEnDisco() {
+        return paginasEnDisco;
     }
 
     /**
-     * Retira los marcos y la reserva del proceso.
+     * Retira los marcos del proceso y las posiciones de sus páginas en la memoria virtual.
      */
     public void liberarMarcos() {
         marcos = null;
-        respaldoPaginas = null;
+        paginasEnDisco = null;
         marcoMasAntiguo = 0;
     }
 
