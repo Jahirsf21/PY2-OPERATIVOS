@@ -1069,7 +1069,7 @@ public class GestorProcesos {
             throw new IllegalArgumentException("La memoria virtual debe estar entre 0 y " + (tamañoDisco - tamañoIndices) + " posiciones.");
         }
         Memoria nuevaMemoria = new Memoria(tamañoMemoria, tamañoKernel);
-        AsignadorMemoria nuevoAsignador = new AsignadorMemoria(nuevaMemoria, tipoAsignacion, cantidadParticiones, tamañosParticion, tamañoPagina);
+        AsignadorMemoria nuevoAsignador = new AsignadorMemoria(nuevaMemoria, tipoAsignacion, cantidadParticiones, tamañosParticion, tamañoPagina, 0);
         Disco nuevoDisco = new Disco(tamañoDisco, tamañoIndices, tamañoDisco - tamañoMemoriaVirtual);
         CargadorArchivos nuevoCargador = new CargadorArchivos();
         List<Nucleo> nuevosNucleos = new ArrayList<>();

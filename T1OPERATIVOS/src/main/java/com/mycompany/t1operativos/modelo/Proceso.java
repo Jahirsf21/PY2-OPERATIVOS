@@ -15,6 +15,11 @@ public class Proceso {
     private int tiempoEspera;
     private int prioridad;
     private boolean aceptado;
+    private int[] marcos;
+    private int marcoMasAntiguo;
+    private int[] respaldoPaginas;
+    private int regresoListo;
+    private int fallosPagina;
 
     /**
      * Construye un trabajo sin memoria asignada.
@@ -34,6 +39,11 @@ public class Proceso {
         this.tiempoEspera = 0;
         this.prioridad = 0;
         this.aceptado = false;
+        this.marcos = null;
+        this.marcoMasAntiguo = 0;
+        this.respaldoPaginas = null;
+        this.regresoListo = -1;
+        this.fallosPagina = 0;
     }
 
     /**
@@ -178,6 +188,121 @@ public class Proceso {
      */
     public void setAceptado(boolean aceptado) {
         this.aceptado = aceptado;
+    }
+
+    /**
+     * Registra los marcos del proceso.
+     *
+     * @param marcos marcos reservados.
+     * @param paginas cantidad de páginas del programa.
+     */
+    public void asignarMarcos(int[] marcos, int paginas) {
+        if (marcos == null || marcos.length < 1 || paginas < marcos.length) {
+            throw new IllegalArgumentException("El proceso necesita entre 1 marco y uno por página.");
+        }
+        this.marcos = marcos;
+        this.marcoMasAntiguo = 0;
+        this.respaldoPaginas = new int[paginas];
+        for (int i = 0; i < paginas; i++) {
+            respaldoPaginas[i] = -1;
+        }
+    }
+
+    /**
+     * Obtiene los marcos del proceso.
+     *
+     * @return marcos reservados, o null sin marcos.
+     */
+    public int[] getMarcos() {
+        return marcos;
+    }
+
+    /**
+     * Obtiene el marco de la página más antigua.
+     *
+     * @return número de marco.
+     */
+    public int getMarcoMasAntiguo() {
+        return marcos[marcoMasAntiguo];
+    }
+
+    /**
+     * Actualiza el marco de la página más antigua.
+     */
+    public void actualizarMarcoMasAntiguo() {
+        marcoMasAntiguo = (marcoMasAntiguo + 1) % marcos.length;
+    }
+
+    /**
+     * Obtiene la posición de una página en la reserva.
+     *
+     * @param pagina número de página.
+     * @return posición en la reserva, o -1 si no está guardada.
+     */
+    public int getRespaldo(int pagina) {
+        return respaldoPaginas[pagina];
+    }
+
+    /**
+     * Registra la posición de una página en la reserva.
+     *
+     * @param pagina número de página.
+     * @param posicion posición en la reserva, o -1.
+     */
+    public void setRespaldo(int pagina, int posicion) {
+        respaldoPaginas[pagina] = posicion;
+    }
+
+    /**
+     * Obtiene la posición de cada página en la reserva.
+     *
+     * @return posiciones en la reserva, o null sin marcos.
+     */
+    public int[] getRespaldoPaginas() {
+        return respaldoPaginas;
+    }
+
+    /**
+     * Retira los marcos y la reserva del proceso.
+     */
+    public void liberarMarcos() {
+        marcos = null;
+        respaldoPaginas = null;
+        marcoMasAntiguo = 0;
+    }
+
+    /**
+     * Obtiene el segundo en que vuelve a LISTO.
+     *
+     * @return segundo del reloj, o -1 si no está bloqueado.
+     */
+    public int getRegresoListo() {
+        return regresoListo;
+    }
+
+    /**
+     * Cambia el segundo en que vuelve a LISTO.
+     *
+     * @param regresoListo segundo del reloj, o -1.
+     */
+    public void setRegresoListo(int regresoListo) {
+        this.regresoListo = regresoListo;
+    }
+
+    /**
+     * Obtiene los fallos de página.
+     *
+     * @return cantidad de fallos.
+     */
+    public int getFallosPagina() {
+        return fallosPagina;
+    }
+
+    /**
+     * Registra un fallo de página.
+     */
+    public void registrarFallo() {
+        fallosPagina++;
     }
 
     /**

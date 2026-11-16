@@ -82,6 +82,7 @@ public final class EstiloUI {
     public static final Color ESTADO_EJECUTANDO = new Color(0xE0, 0x8E, 0x1D);
     public static final Color ESTADO_TERMINADO = new Color(0x21, 0x96, 0x53);
     public static final Color ESTADO_ESPERA_RAM = new Color(0xC6, 0x28, 0x28);
+    public static final Color ESTADO_BLOQUEADO = new Color(0x7B, 0x4F, 0xA6);
     /** Segundo de ocio en la tabla de ejecución. */
     public static final Color COLOR_OCIO = new Color(0xC9, 0xCF, 0xD8);
 

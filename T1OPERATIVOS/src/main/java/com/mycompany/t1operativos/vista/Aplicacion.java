@@ -119,6 +119,7 @@ public class Aplicacion extends JFrame {
     private JTextField selectorTamañosParticion;
     /** Tamaño de página para Paginación. */
     private JSpinner selectorTamañoPagina;
+    private JSpinner selectorMarcosProceso;
     /** Resumen de la asignación de la zona de usuario. */
     private JLabel lblResumenMemoria;
     private JTextArea pantalla;

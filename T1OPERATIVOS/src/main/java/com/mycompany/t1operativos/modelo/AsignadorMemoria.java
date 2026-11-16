@@ -14,17 +14,19 @@ public class AsignadorMemoria {
     private boolean[] particionOcupada;
     private int siguientePosicion;
     private int tamañoPagina;
+    private int marcosPorProceso;
 
     /**
      * Construye el asignador de la zona de usuario.
      *
      * @param memoria RAM compartida.
-     * @param tipoAsignacion Fija iguales, Fija desiguales, First Fit, Next Fit, Best Fit o Paginación.
+     * @param tipoAsignacion Fija iguales, Fija desiguales, First Fit, Next Fit, Best Fit, Paginación o Paginación virtual.
      * @param cantidadParticiones cantidad de particiones para Fija iguales.
      * @param tamañosParticion tamaño de cada partición para Fija desiguales.
-     * @param tamañoPagina posiciones de cada página y marco para Paginación.
+     * @param tamañoPagina posiciones de cada página y marco para Paginación y Paginación virtual.
+     * @param marcosPorProceso marcos de cada proceso para Paginación virtual.
      */
-    public AsignadorMemoria(Memoria memoria, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion, int tamañoPagina) {
+    public AsignadorMemoria(Memoria memoria, String tipoAsignacion, int cantidadParticiones, int[] tamañosParticion, int tamañoPagina, int marcosPorProceso) {
         if (memoria == null) {
             throw new IllegalArgumentException("La memoria no puede ser nula.");
         }
@@ -38,12 +40,19 @@ public class AsignadorMemoria {
         this.particionOcupada = new boolean[0];
         this.siguientePosicion = memoria.getInicioUsuario();
         this.tamañoPagina = 0;
+        this.marcosPorProceso = 0;
         if ("Fija iguales".equals(tipoAsignacion)) {
             crearParticionesIguales(cantidadParticiones);
         } else if ("Fija desiguales".equals(tipoAsignacion)) {
             crearParticionesDesiguales(tamañosParticion);
         } else if ("Paginación".equals(tipoAsignacion)) {
             crearMarcos(tamañoPagina);
+        } else if ("Paginación virtual".equals(tipoAsignacion)) {
+            crearMarcos(tamañoPagina);
+            if (marcosPorProceso < 1 || marcosPorProceso > direccionesInicio.length) {
+                throw new IllegalArgumentException("Los marcos por proceso deben estar entre 1 y " + direccionesInicio.length + ".");
+            }
+            this.marcosPorProceso = marcosPorProceso;
         }
     }
 
@@ -75,10 +84,19 @@ public class AsignadorMemoria {
     /**
      * Obtiene el tamaño de página.
      *
-     * @return posiciones por página, o 0 si el tipo no es Paginación.
+     * @return posiciones por página, o 0 si el tipo no es Paginación ni Paginación virtual.
      */
     public int getTamañoPagina() {
         return tamañoPagina;
+    }
+
+    /**
+     * Obtiene los marcos por proceso.
+     *
+     * @return marcos por proceso, o 0 si el tipo no es Paginación virtual.
+     */
+    public int getMarcosPorProceso() {
+        return marcosPorProceso;
     }
 
     /**
@@ -177,9 +195,12 @@ public class AsignadorMemoria {
      * Indica si un programa de ese tamaño puede ubicarse con el tipo de asignación.
      *
      * @param cantidad posiciones del programa.
-     * @return true si alguna partición, los marcos o, en asignación dinámica, la zona de usuario tienen espacio para él.
+     * @return true si alguna partición, los marcos o, en asignación dinámica, la zona de usuario tienen espacio para él; siempre en Paginación virtual.
      */
     public boolean tieneEspacioPara(int cantidad) {
+        if ("Paginación virtual".equals(tipoAsignacion)) {
+            return true;
+        }
         if ("Paginación".equals(tipoAsignacion)) {
             boolean tieneEspacio = contarPaginas(cantidad) <= direccionesInicio.length;
             return tieneEspacio;
@@ -362,32 +383,57 @@ public class AsignadorMemoria {
         if (cantidad < 1) {
             throw new IllegalArgumentException("El programa debe ocupar al menos una posición.");
         }
-        int paginas = contarPaginas(cantidad);
+        return ocuparMarcos(contarPaginas(cantidad));
+    }
+
+    /**
+     * Ocupa los marcos de un proceso en Paginación virtual.
+     *
+     * @param cantidad posiciones del programa.
+     * @return marcos del proceso, o null si ahora no hay marcos suficientes.
+     */
+    public int[] asignarMarcos(int cantidad) {
+        if (!"Paginación virtual".equals(tipoAsignacion)) {
+            throw new IllegalStateException("Solo se reservan marcos por proceso con el tipo Paginación virtual.");
+        }
+        if (cantidad < 1) {
+            throw new IllegalArgumentException("El programa debe ocupar al menos una posición.");
+        }
+        return ocuparMarcos(Math.min(marcosPorProceso, contarPaginas(cantidad)));
+    }
+
+    /**
+     * Ocupa los marcos libres de menor número.
+     *
+     * @param cantidad marcos requeridos.
+     * @return marcos ocupados, o null si ahora no hay marcos suficientes.
+     */
+    private int[] ocuparMarcos(int cantidad) {
         int libres = 0;
         for (boolean ocupado : particionOcupada) {
             if (!ocupado) {
                 libres++;
             }
         }
-        if (libres < paginas) {
+        if (libres < cantidad) {
             return null;
         }
-        int[] tabla = new int[paginas];
-        int pagina = 0;
-        for (int marco = 0; marco < particionOcupada.length && pagina < paginas; marco++) {
+        int[] marcos = new int[cantidad];
+        int indice = 0;
+        for (int marco = 0; marco < particionOcupada.length && indice < cantidad; marco++) {
             if (!particionOcupada[marco]) {
                 particionOcupada[marco] = true;
-                tabla[pagina] = marco;
-                pagina++;
+                marcos[indice] = marco;
+                indice++;
             }
         }
-        return tabla;
+        return marcos;
     }
 
     /**
-     * Libera los marcos de una tabla de páginas.
+     * Libera los marcos de una tabla de páginas o de un proceso.
      *
-     * @param tabla marco de cada página del proceso.
+     * @param tabla marcos que se liberan.
      */
     public void liberarPaginas(int[] tabla) {
         for (int marco : tabla) {
@@ -409,6 +455,9 @@ public class AsignadorMemoria {
         int pagina = direccion / tamañoPagina;
         if (direccion < 0 || pagina >= tabla.length) {
             throw new IllegalArgumentException("La dirección lógica " + direccion + " está fuera de la tabla de páginas.");
+        }
+        if (tabla[pagina] < 0) {
+            throw new IllegalStateException("La página " + pagina + " no está en RAM.");
         }
         int fisica = direccionesInicio[tabla[pagina]] + direccion % tamañoPagina;
         return fisica;
@@ -436,7 +485,7 @@ public class AsignadorMemoria {
      * @return true si puede usarse.
      */
     private boolean esTipoAsignacionDisponible(String tipo) {
-        boolean disponible = "Fija iguales".equals(tipo) || "Fija desiguales".equals(tipo) || "First Fit".equals(tipo) || "Next Fit".equals(tipo) || "Best Fit".equals(tipo) || "Paginación".equals(tipo);
+        boolean disponible = "Fija iguales".equals(tipo) || "Fija desiguales".equals(tipo) || "First Fit".equals(tipo) || "Next Fit".equals(tipo) || "Best Fit".equals(tipo) || "Paginación".equals(tipo) || "Paginación virtual".equals(tipo);
         return disponible;
     }
 }

@@ -109,6 +109,35 @@ public class Disco {
     }
 
     /**
+     * Escribe contenido en la zona de memoria virtual del disco.
+     *
+     * @param posicion dirección donde se desea escribir.
+     * @param contenido contenido que se desea almacenar.
+     */
+    public void escribirMemoriaVirtual(int posicion, String[] contenido) {
+        validarDireccion(posicion);
+        if (posicion < inicioMemoriaVirtual) {
+            throw new IllegalArgumentException("La posición no pertenece a la zona de memoria virtual del disco.");
+        }
+        disco[posicion] = contenido;
+    }
+
+    /**
+     * Vacía un bloque de memoria virtual.
+     *
+     * @param inicio primera posición del bloque.
+     * @param cantidad posiciones que se liberarán.
+     */
+    public void liberarMemoriaVirtual(int inicio, int cantidad) {
+        if (cantidad <= 0 || inicio < inicioMemoriaVirtual || cantidad > disco.length - inicio) {
+            throw new IllegalArgumentException("El bloque debe pertenecer completo a la zona de memoria virtual del disco.");
+        }
+        for (int posicion = inicio; posicion < inicio + cantidad; posicion++) {
+            disco[posicion] = null;
+        }
+    }
+
+    /**
      * Comprueba que una dirección pertenezca al disco.
      *
      * @param posicion dirección que se desea comprobar.

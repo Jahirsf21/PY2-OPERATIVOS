@@ -358,7 +358,7 @@ public class BCP {
     /**
      * Presenta la tabla de páginas como texto.
      *
-     * @return marcos entre corchetes, como «[0, 4]», o «-» si no hay tabla.
+     * @return marcos entre corchetes, como "[0, -, 4]" con "-" en las páginas ausentes, o "-" si no hay tabla.
      */
     public String getTablaPaginasToString() {
         if (tablaPaginas == null) {
@@ -369,7 +369,11 @@ public class BCP {
             if (pagina > 0) {
                 texto = texto + ", ";
             }
-            texto = texto + tablaPaginas[pagina];
+            if (tablaPaginas[pagina] < 0) {
+                texto = texto + "-";
+            } else {
+                texto = texto + tablaPaginas[pagina];
+            }
         }
         return texto + "]";
     }
@@ -402,6 +406,13 @@ public class BCP {
         if (tiempoInicio == -1) {
             tiempoInicio = instante;
         }
+    }
+
+    /**
+     * Establece el estado del proceso como BLOQUEADO.
+     */
+    public void setEstadoBloqueado() {
+        this.estado = "BLOQUEADO";
     }
 
     /**
