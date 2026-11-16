@@ -498,6 +498,16 @@ public class GestorProcesos {
     }
 
     /**
+     * Obtiene la razón de respuesta HRRN de un proceso en el reloj actual.
+     *
+     * @param proceso proceso cargado en RAM.
+     * @return (reloj − llegada + ráfaga) / ráfaga.
+     */
+    public double getRazonRespuesta(Proceso proceso) {
+        return getNucleo(proceso).getPlanificador().calcularRazonHRRN(proceso.getBCP(), reloj);
+    }
+
+    /**
      * Obtiene el reloj simulado.
      *
      * @return segundos transcurridos desde cero.
@@ -602,6 +612,16 @@ public class GestorProcesos {
         if (estaSimulacionTerminada()) {
             historial.add(new ResultadoSimulacion(historial.size() + 1, nucleos, asignador, procesosRegistrados, reloj));
         }
+    }
+
+    /**
+     * Comprueba si un proceso ya llegó y espera memoria en la cola de trabajos.
+     *
+     * @param proceso proceso registrado.
+     * @return true si está en la cola de trabajos.
+     */
+    public boolean estaEnColaTrabajos(Proceso proceso) {
+        return colaTrabajos.contains(proceso);
     }
 
     /**

@@ -271,7 +271,7 @@ public class Planificador {
      * @param instante segundo actual del reloj simulado.
      * @return razon de respuesta del proceso.
      */
-    private double calcularRazonHRRN(BCP proceso, int instante) {
+    public double calcularRazonHRRN(BCP proceso, int instante) {
         int transcurrido = instante - proceso.getLlegada();
         double razon = (double) (transcurrido + proceso.getRafaga()) / proceso.getRafaga();
         return razon;

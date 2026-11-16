@@ -81,6 +81,9 @@ public final class EstiloUI {
     public static final Color ESTADO_LISTO = new Color(0x5B, 0x6B, 0x82);
     public static final Color ESTADO_EJECUTANDO = new Color(0xE0, 0x8E, 0x1D);
     public static final Color ESTADO_TERMINADO = new Color(0x21, 0x96, 0x53);
+    public static final Color ESTADO_ESPERA_RAM = new Color(0xC6, 0x28, 0x28);
+    /** Segundo de ocio en la tabla de ejecución. */
+    public static final Color COLOR_OCIO = new Color(0xC9, 0xCF, 0xD8);
 
     /** Acentos de las tarjetas. */
     public static final Color ACENTO_VIOLETA = new Color(0x8E, 0x5C, 0xE0);
@@ -423,6 +426,10 @@ public final class EstiloUI {
                 return ESTADO_LISTO;
             case "NUEVO":
                 return ESTADO_NUEVO;
+            case "ESPERA RAM":
+                return ESTADO_ESPERA_RAM;
+            case "NO LLEGADO":
+                return TEXTO_SECUNDARIO;
             default:
                 return TEXTO_SECUNDARIO;
         }

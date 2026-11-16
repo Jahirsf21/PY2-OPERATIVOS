@@ -123,6 +123,10 @@ public class Aplicacion extends JFrame {
     private JLabel lblResumenMemoria;
     private JTextArea pantalla;
     private DefaultTableModel modeloMemoria;
+    /** Posiciones de RAM con la próxima instrucción de cada proceso en ejecución. */
+    private List<Integer> posicionesInstruccion = new ArrayList<>();
+    /** ID del proceso de cada posición de {@code posicionesInstruccion}. */
+    private List<Integer> idsInstruccion = new ArrayList<>();
     private DefaultTableModel modeloDisco;
     /** Filas de trabajos pendientes. */
     private DefaultTableModel modeloTrabajos;
@@ -710,7 +714,7 @@ public class Aplicacion extends JFrame {
      * @return panel de procesos y estados.
      */
     private JPanel crearPanelProcesos() {
-        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "CPU", "Estado", "Restante", "Razón", "Nivel", "SRR"}, 0) {
+        modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "CPU", "Estado", "Restante"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -722,6 +726,28 @@ public class Aplicacion extends JFrame {
         configurarTablaLista(tablaProcesos);
         return EstiloUI.crearTarjetaConTitulo("Lista de Procesos", EstiloUI.iconoTarjetaProcesos(),
                 EstiloUI.ACENTO_VERDE, EstiloUI.crearScroll(tablaProcesos));
+    }
+
+    /**
+     * Cambia la columna propia del algoritmo en la lista de procesos.
+     *
+     * @param titulo encabezado de la columna, o vacío para no mostrarla.
+     */
+    public void setColumnaAlgoritmo(String titulo) {
+        int columnas = 4;
+        if (!titulo.isEmpty()) {
+            columnas = 5;
+        }
+        boolean igual = modeloProcesos.getColumnCount() == columnas && (columnas == 4 || titulo.equals(modeloProcesos.getColumnName(4)));
+        if (igual) {
+            return;
+        }
+        if (columnas == 4) {
+            modeloProcesos.setColumnIdentifiers(new Object[]{"Proceso", "CPU", "Estado", "Restante"});
+        } else {
+            modeloProcesos.setColumnIdentifiers(new Object[]{"Proceso", "CPU", "Estado", "Restante", titulo});
+        }
+        configurarTablaLista(tablaProcesos);
     }
 
     /**
@@ -1567,6 +1593,18 @@ public class Aplicacion extends JFrame {
     }
 
     /**
+     * Marca en la RAM la próxima instrucción de cada proceso en ejecución.
+     *
+     * @param posiciones posiciones físicas de RAM, una por CPU ocupada.
+     * @param ids ID del proceso de cada posición.
+     */
+    public void marcarInstrucciones(List<Integer> posiciones, List<Integer> ids) {
+        posicionesInstruccion = posiciones;
+        idsInstruccion = ids;
+        tablaMemoria.repaint();
+    }
+
+    /**
      * Elimina la selección de ambas tablas.
      */
     public void limpiarSeleccionTablas() {
@@ -1813,11 +1851,17 @@ public class Aplicacion extends JFrame {
     /**
      * Colorea la RAM: el primer 25% es el kernel (verde si está libre,
      * ámbar si guarda datos de un BCP) y el resto es el área de usuario.
+     * La posición de la próxima instrucción de cada proceso en ejecución
+     * se pinta con el color de su ID.
      */
-    private static class RendererMemoria extends EstiloUI.RendererCelda {
+    private class RendererMemoria extends EstiloUI.RendererCelda {
 
         @Override
         protected Color fondo(JTable tabla, Object valor, int fila, int columna) {
+            int marca = posicionesInstruccion.indexOf(fila);
+            if (columna == 0 && marca >= 0) {
+                return EstiloUI.colorProceso(idsInstruccion.get(marca));
+            }
             int kernel = tabla.getRowCount() / 4;
             if (fila < kernel) {
                 boolean vacia = tabla.getValueAt(fila, 1) == null || tabla.getValueAt(fila, 1).toString().isBlank();
@@ -1865,10 +1909,22 @@ public class Aplicacion extends JFrame {
 
         @Override
         protected Color texto(JTable tabla, Object valor, int fila, int columna) {
+            if (columna == 0 && posicionesInstruccion.contains(fila)) {
+                return EstiloUI.TEXTO;
+            }
             if (columna == 0) {
                 return EstiloUI.TEXTO_SECUNDARIO;
             }
             return EstiloUI.TEXTO;
+        }
+
+        @Override
+        protected String tooltip(JTable tabla, Object valor, int fila, int columna) {
+            int marca = posicionesInstruccion.indexOf(fila);
+            if (columna == 0 && marca >= 0) {
+                return "Próxima instrucción de P" + idsInstruccion.get(marca);
+            }
+            return super.tooltip(tabla, valor, fila, columna);
         }
     }
 
@@ -1910,7 +1966,8 @@ public class Aplicacion extends JFrame {
     }
 
     /**
-     * Tabla de ejecución: los segundos en que el proceso ejecutó se pintan, sin texto, con el color de su ID.
+     * Tabla de ejecución: los segundos en que el proceso ejecutó se pintan, sin texto, con el color de su ID,
+     * y los de ocio (ID 0) en gris.
      */
     private static class RendererEjecucion extends EstiloUI.RendererCelda {
 
@@ -1928,7 +1985,11 @@ public class Aplicacion extends JFrame {
         @Override
         protected Color fondo(JTable tabla, Object valor, int fila, int columna) {
             if (columna >= 2 && valor instanceof Integer) {
-                return EstiloUI.colorProceso((Integer) valor);
+                int id = (Integer) valor;
+                if (id == 0) {
+                    return EstiloUI.COLOR_OCIO;
+                }
+                return EstiloUI.colorProceso(id);
             }
             return super.fondo(tabla, valor, fila, columna);
         }

@@ -453,7 +453,11 @@ public class Controlador {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 BCP bcp = proceso.getBCP();
                 if ("NUEVO".equals(bcp.getEstado())) {
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getBoletos(), bcp.getCpuActual(), bcp.getEstado()});
+                    String estado = "NO LLEGADO";
+                    if (gestor.estaEnColaTrabajos(proceso)) {
+                        estado = "ESPERA RAM";
+                    }
+                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getLlegada(), bcp.getRafaga(), bcp.getPrioridad(), bcp.getBoletos(), bcp.getCpuActual(), estado});
                 }
             }
         }
@@ -465,34 +469,60 @@ public class Controlador {
     private void actualizarTablaProcesos() {
         DefaultTableModel modelo = vista.getModeloProcesos();
         modelo.setRowCount(0);
+        String algoritmo = vista.getAlgoritmoSeleccionado();
+        if (gestor != null) {
+            algoritmo = gestor.getAlgoritmo();
+        }
+        String titulo = "";
+        if ("Prioridad".equals(algoritmo) || "SRR".equals(algoritmo)) {
+            titulo = "Prioridad";
+        } else if ("HRRN".equals(algoritmo) || "GuaranteedScheduling".equals(algoritmo)) {
+            titulo = "Razón";
+        } else if ("MLFQ".equals(algoritmo)) {
+            titulo = "Nivel";
+        }
+        vista.setColumnaAlgoritmo(titulo);
         if (gestor != null) {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 if (proceso.getPosicionBCP() >= 0) {
                     BCP bcp = proceso.getBCP();
-                    String razon = "";
-                    if ("GuaranteedScheduling".equals(gestor.getAlgoritmo())) {
-                        razon = String.format("%.2f", gestor.getRazon(proceso));
+                    if (titulo.isEmpty()) {
+                        modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getCpuActual(), bcp.getEstado(), bcp.getRestante()});
+                    } else {
+                        modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getCpuActual(), bcp.getEstado(), bcp.getRestante(), valorAlgoritmo(algoritmo, proceso)});
                     }
-                    String nivel = "";
-                    if ("MLFQ".equals(gestor.getAlgoritmo())) {
-                        nivel = proceso.getNivel() + " (" + gestor.getQuantumUsado(proceso) + "/" + gestor.getQuantumsNivel()[proceso.getNivel()] + ")";
-                    }
-                    String srr = "";
-                    if ("SRR".equals(gestor.getAlgoritmo())) {
-                        if (proceso.estaAceptado()) {
-                            srr = "A:" + proceso.getPrioridad();
-                        } else {
-                            srr = "N:" + proceso.getPrioridad();
-                        }
-                    }
-                    modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getCpuActual(), bcp.getEstado(), bcp.getRestante(), razon, nivel, srr});
                 }
             }
         }
     }
 
     /**
-     * Muestra los segundos en que ejecutó cada proceso, por CPU y luego por ID.
+     * Obtiene el valor de la columna propia del algoritmo para un proceso en RAM.
+     *
+     * @param algoritmo algoritmo de la simulación.
+     * @param proceso proceso cargado en RAM.
+     * @return prioridad, razón o nivel, según el algoritmo.
+     */
+    private String valorAlgoritmo(String algoritmo, Proceso proceso) {
+        BCP bcp = proceso.getBCP();
+        if ("Prioridad".equals(algoritmo)) {
+            return "" + bcp.getPrioridad();
+        } else if ("SRR".equals(algoritmo)) {
+            if (proceso.estaAceptado()) {
+                return "A:" + proceso.getPrioridad();
+            }
+            return "N:" + proceso.getPrioridad();
+        } else if ("HRRN".equals(algoritmo)) {
+            return String.format("%.2f", gestor.getRazonRespuesta(proceso));
+        } else if ("GuaranteedScheduling".equals(algoritmo)) {
+            return String.format("%.2f", gestor.getRazon(proceso));
+        }
+        return proceso.getNivel() + " (" + gestor.getQuantumUsado(proceso) + "/" + gestor.getQuantumsNivel()[proceso.getNivel()] + ")";
+    }
+
+    /**
+     * Muestra los segundos en que ejecutó cada proceso, por CPU y luego por ID,
+     * y al final de cada CPU sus segundos de ocio.
      */
     private void actualizarTablaEjecucion() {
         List<Object[]> filas = new ArrayList<>();
@@ -516,6 +546,16 @@ public class Controlador {
                         filas.add(fila);
                     }
                 }
+                Object[] ocio = new Object[segundos + 2];
+                ocio[0] = nucleo.getNumero();
+                ocio[1] = "Ocio";
+                for (int segundo = 0; segundo < segundos; segundo++) {
+                    ocio[segundo + 2] = "";
+                    if (segundo < historial.size() && historial.get(segundo) == 0) {
+                        ocio[segundo + 2] = 0;
+                    }
+                }
+                filas.add(ocio);
             }
         }
         vista.mostrarEjecucion(segundos, filas);
@@ -717,13 +757,24 @@ public class Controlador {
     }
 
     /**
-     * Resalta el PC del proceso actual.
+     * Marca en la RAM el PC de cada CPU ocupada y resalta el de la CPU elegida.
      */
     private void actualizarSeleccionProximaInstruccion() {
         Proceso actual = null;
+        List<Integer> posiciones = new ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
         if (gestor != null) {
             actual = gestor.getActual(vista.getCPUBCPSeleccionada());
+            for (Nucleo nucleo : gestor.getNucleos()) {
+                Proceso enCPU = gestor.getActual(nucleo.getNumero());
+                if (enCPU != null) {
+                    int pcCPU = gestor.getCPU(nucleo.getNumero()).getPc();
+                    posiciones.add(gestor.getAsignador().traducirDireccion(enCPU.getBCP().getTablaPaginas(), pcCPU));
+                    ids.add(enCPU.getBCP().getIdProceso());
+                }
+            }
         }
+        vista.marcarInstrucciones(posiciones, ids);
         if (actual == null) {
             vista.limpiarSeleccionTablas();
         } else {
