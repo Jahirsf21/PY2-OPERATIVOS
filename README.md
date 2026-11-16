@@ -9,7 +9,7 @@
 
 ### Estado del proyecto: 1,5
 
-### [Enlace del video](https://youtu.be/zWprPsxDTME)
+### [Enlace del video](https://drive.google.com/drive/folders/1nqoa5_J_q-H5Awmm3TWqruWyYu13yqGH?usp=sharing)
 
 ## Objetivos alcanzados y no alcanzados
 
