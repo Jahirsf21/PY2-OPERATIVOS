@@ -59,7 +59,7 @@ public class GestorArchivos {
     }
 
     /**
-     * Abre un archivo sin repetirlo en la lista del proceso.
+     * Abre un archivo sin repetirlo en la lista del proceso si ningún otro proceso lo tiene abierto.
      *
      * @param bcp BCP del proceso.
      * @param nombre nombre del archivo.
@@ -69,6 +69,9 @@ public class GestorArchivos {
             throw new IllegalArgumentException("Debe indicar el BCP solicitante.");
         }
         int posicion = obtenerArchivoDatos(nombre);
+        if (estaAbiertoPorOtro(bcp, nombre)) {
+            throw new IllegalStateException("El archivo " + nombre + " está abierto por otro proceso.");
+        }
         if (!estaAbierto(bcp, nombre)) {
             bcp.getArchivosAbiertos().add(disco.leer(posicion)[0]);
         }
@@ -145,18 +148,6 @@ public class GestorArchivos {
                 break;
             }
         }
-    }
-
-    /**
-     * Cierra los archivos del proceso sin borrarlos.
-     *
-     * @param bcp BCP del proceso que termina.
-     */
-    public void cerrarArchivos(BCP bcp) {
-        if (bcp == null) {
-            throw new IllegalArgumentException("Debe indicar el BCP solicitante.");
-        }
-        bcp.getArchivosAbiertos().clear();
     }
 
     /**
