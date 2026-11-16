@@ -113,7 +113,7 @@ public class Controlador {
         GestorProcesos destino = gestor;
         try {
             if (destino == null || (destino.getProcesosRegistrados().isEmpty() && destino.getHistorial().isEmpty())) {
-                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado(), 0);
+                destino = new GestorProcesos(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado(), vista.getMarcosProcesoSeleccionado());
             }
             int cantidadAnterior = destino.getProcesosRegistrados().size();
             List<String> mensajes = destino.cargarProgramas(archivos);
@@ -307,7 +307,7 @@ public class Controlador {
      */
     private void nuevaSimulacion() {
         try {
-            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado(), 0);
+            List<String> mensajes = gestor.nuevaSimulacion(vista.getMemoriaSeleccionada(), vista.getDiscoSeleccionado(), vista.getMemoriaVirtualSeleccionada(), vista.getAlgoritmoSeleccionado(), vista.getQuantumSeleccionado(), vista.getQuantumsNivelSeleccionados(), vista.getLimiteEsperaSeleccionado(), vista.getTasaASeleccionada(), vista.getTasaBSeleccionada(), vista.getCantidadCPUSeleccionada(), vista.getTipoAsignacionSeleccionado(), vista.getCantidadParticionesSeleccionada(), vista.getTamañosParticionSeleccionados(), vista.getTamañoPaginaSeleccionado(), vista.getMarcosProcesoSeleccionado());
             vista.limpiarConsola();
             actualizarVista();
             if (!mensajes.isEmpty()) {
@@ -371,15 +371,25 @@ public class Controlador {
         }
         Memoria memoria = gestor.getMemoria();
         AsignadorMemoria asignador = gestor.getAsignador();
-        boolean paginacion = "Paginación".equals(asignador.getTipoAsignacion());
-        int[] dueños = new int[asignador.getDireccionesInicio().length];
+        boolean paginacion = asignador.getTamañoPagina() > 0;
+        int[] idProceso = new int[asignador.getDireccionesInicio().length];
         int[] paginas = new int[asignador.getDireccionesInicio().length];
+        for (int marco = 0; marco < paginas.length; marco++) {
+            paginas[marco] = -1;
+        }
         for (Proceso proceso : gestor.getProcesosRegistrados()) {
             int[] tabla = proceso.getBCP().getTablaPaginas();
+            if (proceso.getMarcos() != null) {
+                for (int marco : proceso.getMarcos()) {
+                    idProceso[marco] = proceso.getBCP().getIdProceso();
+                }
+            }
             if (tabla != null && proceso.getPosicionBCP() >= 0) {
                 for (int pagina = 0; pagina < tabla.length; pagina++) {
-                    dueños[tabla[pagina]] = proceso.getBCP().getIdProceso();
-                    paginas[tabla[pagina]] = pagina;
+                    if (tabla[pagina] >= 0) {
+                        idProceso[tabla[pagina]] = proceso.getBCP().getIdProceso();
+                        paginas[tabla[pagina]] = pagina;
+                    }
                 }
             }
         }
@@ -395,8 +405,10 @@ public class Controlador {
                 }
             }
             int indice = asignador.getParticion(posicion);
-            if (indice >= 0 && paginacion && dueños[indice] > 0) {
-                particion = "M" + indice + " · P" + dueños[indice] + " pág " + paginas[indice];
+            if (indice >= 0 && paginacion && idProceso[indice] > 0 && paginas[indice] >= 0) {
+                particion = "M" + indice + " · P" + idProceso[indice] + " pág " + paginas[indice];
+            } else if (indice >= 0 && paginacion && idProceso[indice] > 0) {
+                particion = "M" + indice + " · P" + idProceso[indice];
             } else if (indice >= 0 && paginacion) {
                 particion = "M" + indice;
             } else if (indice >= 0) {
@@ -417,6 +429,18 @@ public class Controlador {
             return;
         }
         Disco disco = gestor.getDisco();
+        int tamañoPagina = gestor.getAsignador().getTamañoPagina();
+        String[] paginasEnDisco = new String[disco.getTamañoTotal()];
+        for (Proceso proceso : gestor.getProcesosRegistrados()) {
+            int[] posiciones = proceso.getPaginasEnDisco();
+            if (posiciones != null) {
+                for (int pagina = 0; pagina < posiciones.length; pagina++) {
+                    for (int i = 0; posiciones[pagina] >= 0 && i < tamañoPagina; i++) {
+                        paginasEnDisco[posiciones[pagina] + i] = "P" + proceso.getBCP().getIdProceso() + " pág " + pagina;
+                    }
+                }
+            }
+        }
         for (int posicion = 0; posicion < disco.getTamañoTotal(); posicion++) {
             String contenido = "";
             String[] valor = disco.leer(posicion);
@@ -426,8 +450,14 @@ public class Controlador {
                 } else {
                     contenido = "[" + valor[0] + ", " + valor[1] + ", " + valor[2] + "]";
                 }
-            } else if (disco.esDireccionMemoriaVirtual(posicion)) {
+            } else if (disco.esDireccionMemoriaVirtual(posicion) && !"Paginación virtual".equals(gestor.getAsignador().getTipoAsignacion())) {
                 contenido = "Memoria virtual (sin uso)";
+            } else if (disco.esDireccionMemoriaVirtual(posicion) && paginasEnDisco[posicion] == null) {
+                contenido = "Memoria virtual (libre)";
+            } else if (disco.esDireccionMemoriaVirtual(posicion) && valor == null) {
+                contenido = paginasEnDisco[posicion] + ": (vacía)";
+            } else if (disco.esDireccionMemoriaVirtual(posicion)) {
+                contenido = paginasEnDisco[posicion] + ": " + parser.traducirInstruccion(valor);
             } else if (valor != null) {
                 if (valor.length == 1) {
                     if (valor[0].isEmpty()) {
@@ -481,16 +511,28 @@ public class Controlador {
         } else if ("MLFQ".equals(algoritmo)) {
             titulo = "Nivel";
         }
-        vista.setColumnaAlgoritmo(titulo);
+        String tipo = vista.getTipoAsignacionSeleccionado();
+        if (gestor != null) {
+            tipo = gestor.getAsignador().getTipoAsignacion();
+        }
+        boolean conFallos = "Paginación virtual".equals(tipo);
+        vista.setColumnasProcesos(titulo, conFallos);
         if (gestor != null) {
             for (Proceso proceso : gestor.getProcesosRegistrados()) {
                 if (proceso.getPosicionBCP() >= 0) {
                     BCP bcp = proceso.getBCP();
-                    if (titulo.isEmpty()) {
-                        modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getCpuActual(), bcp.getEstado(), bcp.getRestante()});
-                    } else {
-                        modelo.addRow(new Object[]{bcp.getIdProceso(), bcp.getCpuActual(), bcp.getEstado(), bcp.getRestante(), valorAlgoritmo(algoritmo, proceso)});
+                    List<Object> fila = new ArrayList<>();
+                    fila.add(bcp.getIdProceso());
+                    fila.add(bcp.getCpuActual());
+                    fila.add(bcp.getEstado());
+                    fila.add(bcp.getRestante());
+                    if (!titulo.isEmpty()) {
+                        fila.add(valorAlgoritmo(algoritmo, proceso));
                     }
+                    if (conFallos) {
+                        fila.add(proceso.getFallosPagina());
+                    }
+                    modelo.addRow(fila.toArray());
                 }
             }
         }
@@ -767,20 +809,44 @@ public class Controlador {
             actual = gestor.getActual(vista.getCPUBCPSeleccionada());
             for (Nucleo nucleo : gestor.getNucleos()) {
                 Proceso enCPU = gestor.getActual(nucleo.getNumero());
+                int posicion = -1;
                 if (enCPU != null) {
-                    int pcCPU = gestor.getCPU(nucleo.getNumero()).getPc();
-                    posiciones.add(gestor.getAsignador().traducirDireccion(enCPU.getBCP().getTablaPaginas(), pcCPU));
+                    posicion = posicionFisica(enCPU, gestor.getCPU(nucleo.getNumero()).getPc());
+                }
+                if (posicion >= 0) {
+                    posiciones.add(posicion);
                     ids.add(enCPU.getBCP().getIdProceso());
                 }
             }
         }
         vista.marcarInstrucciones(posiciones, ids);
-        if (actual == null) {
+        int posicionActual = -1;
+        if (actual != null) {
+            posicionActual = posicionFisica(actual, gestor.getCPU(vista.getCPUBCPSeleccionada()).getPc());
+        }
+        if (posicionActual < 0) {
             vista.limpiarSeleccionTablas();
         } else {
-            int pc = gestor.getCPU(vista.getCPUBCPSeleccionada()).getPc();
-            vista.seleccionarProximaInstruccion(gestor.getAsignador().traducirDireccion(actual.getBCP().getTablaPaginas(), pc));
+            vista.seleccionarProximaInstruccion(posicionActual);
         }
+    }
+
+    /**
+     * Obtiene la dirección de RAM de un PC.
+     *
+     * @param proceso proceso en ejecución.
+     * @param pc dirección del programa.
+     * @return dirección de la RAM, o -1 si su página no está en RAM.
+     */
+    private int posicionFisica(Proceso proceso, int pc) {
+        int[] tabla = proceso.getBCP().getTablaPaginas();
+        if (tabla != null) {
+            int pagina = pc / gestor.getAsignador().getTamañoPagina();
+            if (pagina < 0 || pagina >= tabla.length || tabla[pagina] < 0) {
+                return -1;
+            }
+        }
+        return gestor.getAsignador().traducirDireccion(tabla, pc);
     }
 
     /**

@@ -26,7 +26,6 @@ public class GestorProcesos {
     private List<ResultadoSimulacion> historial;
     private List<Nucleo> nucleos;
     private List<String> erroresPaso;
-    private List<String> fallosPaso;
 
     /**
      * Construye los recursos de la simulación.
@@ -107,7 +106,6 @@ public class GestorProcesos {
             throw new IllegalStateException("No hay procesos ejecutables.");
         }
         simulacionIniciada = true;
-        fallosPaso = new ArrayList<>();
         boolean cambio = volverAListos();
         boolean[] agotados = new boolean[nucleos.size()];
         for (int i = 0; i < nucleos.size(); i++) {
@@ -161,13 +159,13 @@ public class GestorProcesos {
             Proceso actual = nucleo.getDespachador().getActual();
             if (actual != null && tienePaginaAusente(actual)) {
                 nucleo.getDespachador().expropiarActual();
-                bloquearPorFallo(nucleo, actual);
+                bloquearPorFallo(actual);
                 despacho = true;
             }
             while (nucleo.getDespachador().getActual() == null && planificador.hayProcesosListos()) {
                 Proceso siguiente = planificador.obtenerSiguiente(reloj);
                 if (tienePaginaAusente(siguiente)) {
-                    bloquearPorFallo(nucleo, siguiente);
+                    bloquearPorFallo(siguiente);
                 } else {
                     nucleo.getDespachador().despachar(siguiente, reloj);
                     nucleo.setQuantumUsado(siguiente.getQuantumUsado());
@@ -199,15 +197,11 @@ public class GestorProcesos {
     /**
      * Carga la página del PC de un proceso y lo deja BLOQUEADO un segundo.
      *
-     * @param nucleo CPU del proceso.
      * @param proceso proceso con fallo de página.
      */
-    private void bloquearPorFallo(Nucleo nucleo, Proceso proceso) {
-        String aviso = cargarPagina(proceso, proceso.getBCP().getPc() / asignador.getTamañoPagina());
-        if (nucleos.size() > 1) {
-            aviso = "CPU " + nucleo.getNumero() + ": " + aviso;
-        }
-        fallosPaso.add(aviso);
+    private void bloquearPorFallo(Proceso proceso) {
+        cargarPagina(proceso, proceso.getBCP().getPc() / asignador.getTamañoPagina());
+        proceso.registrarFallo();
         proceso.getBCP().setEstadoBloqueado();
         proceso.setRegresoListo(reloj + 1);
         proceso.setQuantumUsado(0);
@@ -218,17 +212,15 @@ public class GestorProcesos {
     /**
      * Carga una página en el marco de la página más antigua y guarda en la memoria virtual la página que sale.
      *
-     * @param proceso proceso con fallo de página.
+     * @param proceso proceso que recibe la página.
      * @param pagina página que se carga.
-     * @return aviso del fallo de página.
      */
-    private String cargarPagina(Proceso proceso, int pagina) {
+    private void cargarPagina(Proceso proceso, int pagina) {
         BCP bcp = proceso.getBCP();
         int[] tabla = bcp.getTablaPaginas();
         int tamaño = asignador.getTamañoPagina();
         int marco = proceso.getMarcoMasAntiguo();
         int inicioMarco = asignador.getDireccionesInicio()[marco];
-        String aviso = "Fallo de página: P" + bcp.getIdProceso() + " pág " + pagina + " en M" + marco;
         int paginaAntigua = -1;
         for (int i = 0; i < tabla.length; i++) {
             if (tabla[i] == marco) {
@@ -253,24 +245,15 @@ public class GestorProcesos {
             }
             disco.liberarMemoriaVirtual(posicionDisco, tamaño);
             proceso.setPaginaEnDisco(pagina, -1);
-            aviso = aviso + " desde la memoria virtual";
         } else {
             int direccion = Integer.parseInt(disco.leer(proceso.getPosicionIndice())[1]);
             int primera = pagina * tamaño;
             for (int i = 0; i < tamaño && primera + i < bcp.getAlcance(); i++) {
                 memoria.escribirUsuario(inicioMarco + i, disco.leer(direccion + primera + i));
             }
-            aviso = aviso + " desde el programa";
-        }
-        if (paginaAntigua >= 0 && proceso.getPaginaEnDisco(paginaAntigua) >= 0) {
-            aviso = aviso + ", sale pág " + paginaAntigua + " a la memoria virtual";
-        } else if (paginaAntigua >= 0) {
-            aviso = aviso + ", sale pág " + paginaAntigua;
         }
         tabla[pagina] = marco;
         proceso.actualizarMarcoMasAntiguo();
-        proceso.registrarFallo();
-        return aviso;
     }
 
     /**
@@ -329,14 +312,6 @@ public class GestorProcesos {
         reloj++;
         erroresPaso = new ArrayList<>();
         String salida = null;
-        for (String aviso : fallosPaso) {
-            if (salida == null) {
-                salida = aviso;
-            } else {
-                salida = salida + "\n" + aviso;
-            }
-        }
-        fallosPaso = new ArrayList<>();
         for (Nucleo nucleo : nucleos) {
             String salidaNucleo = null;
             try {
@@ -980,6 +955,7 @@ public class GestorProcesos {
                 proceso.asignarMarcos(marcos, tablaPaginas.length);
                 bcp.setTablaPaginas(tablaPaginas);
                 bcp.asignarMemoria(0, cantidadInstrucciones - 1);
+                cargarPagina(proceso, 0);
             } else {
                 int inicioPrograma = asignador.asignar(cantidadInstrucciones);
                 if (inicioPrograma < 0) {
@@ -1185,7 +1161,6 @@ public class GestorProcesos {
             throw new IllegalStateException("El proceso no tiene memoria asignada para liberar.");
         }
         bcp.setEstadoTerminado(reloj);
-        gestorArchivos.cerrarArchivos(bcp);
         if (esActual) {
             nucleo.getDespachador().retirarActual();
         }
@@ -1266,6 +1241,5 @@ public class GestorProcesos {
         reloj = 0;
         simulacionIniciada = false;
         erroresPaso = new ArrayList<>();
-        fallosPaso = new ArrayList<>();
     }
 }

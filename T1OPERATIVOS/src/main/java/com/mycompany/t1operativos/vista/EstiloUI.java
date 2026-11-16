@@ -425,6 +425,8 @@ public final class EstiloUI {
                 return ESTADO_TERMINADO;
             case "LISTO":
                 return ESTADO_LISTO;
+            case "BLOQUEADO":
+                return ESTADO_BLOQUEADO;
             case "NUEVO":
                 return ESTADO_NUEVO;
             case "ESPERA RAM":

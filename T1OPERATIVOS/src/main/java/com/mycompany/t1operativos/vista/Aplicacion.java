@@ -333,7 +333,7 @@ public class Aplicacion extends JFrame {
         selectorTasaB.setEnabled(false);
         selectorCantidadCPU = new JSpinner(new SpinnerNumberModel(1, 1, 5, 1));
         EstiloUI.estilizarSpinner(selectorCantidadCPU);
-        selectorTipoAsignacion = new JComboBox<>(new String[]{"Fija iguales", "Fija desiguales", "First Fit", "Next Fit", "Best Fit", "Paginación"});
+        selectorTipoAsignacion = new JComboBox<>(new String[]{"Fija iguales", "Fija desiguales", "First Fit", "Next Fit", "Best Fit", "Paginación", "Paginación virtual"});
         EstiloUI.estilizarCombo(selectorTipoAsignacion);
         selectorTipoAsignacion.setPreferredSize(new Dimension(130, 34));
         selectorTipoAsignacion.setSelectedItem("First Fit");
@@ -350,6 +350,9 @@ public class Aplicacion extends JFrame {
         selectorTamañoPagina = new JSpinner(new SpinnerNumberModel(4, 1, null, 1));
         EstiloUI.estilizarSpinner(selectorTamañoPagina);
         selectorTamañoPagina.setEnabled(false);
+        selectorMarcosProceso = new JSpinner(new SpinnerNumberModel(2, 1, null, 1));
+        EstiloUI.estilizarSpinner(selectorMarcosProceso);
+        selectorMarcosProceso.setEnabled(false);
 
         lblDistribucionMemoria = new JLabel();
         lblDistribucionMemoria.setFont(EstiloUI.FUENTE_ETIQUETA);
@@ -379,6 +382,9 @@ public class Aplicacion extends JFrame {
         tarjetaMemoria.add(Box.createVerticalStrut(10));
         tarjetaMemoria.add(crearFilaCampo("Tamaño de página",
                 "Posiciones por página y marco; debe dividir exacto la zona de usuario.", selectorTamañoPagina));
+        tarjetaMemoria.add(Box.createVerticalStrut(10));
+        tarjetaMemoria.add(crearFilaCampo("Marcos por proceso",
+                "Paginación virtual; al llenarse sale la página más antigua.", selectorMarcosProceso));
 
         // ---- Tarjeta de almacenamiento secundario ----
         JPanel tarjetaDisco = crearTarjetaConfiguracion("Almacenamiento secundario");
@@ -386,7 +392,7 @@ public class Aplicacion extends JFrame {
                 "Capacidad total. El índice ocupa el 5% inicial.", selectorDisco));
         tarjetaDisco.add(Box.createVerticalStrut(10));
         tarjetaDisco.add(crearFilaCampo("Memoria virtual",
-                "Reserva al final del disco.", selectorMemoriaVirtual));
+                "Zona al final del disco para las páginas que salen de RAM.", selectorMemoriaVirtual));
         agregarDistribucion(tarjetaDisco, lblDistribucionDisco, barraDisco);
 
         // ---- Tarjeta de planificación ----
@@ -730,24 +736,31 @@ public class Aplicacion extends JFrame {
     }
 
     /**
-     * Cambia la columna propia del algoritmo en la lista de procesos.
+     * Cambia las columnas propias del algoritmo y de los fallos de página en la lista de procesos.
      *
-     * @param titulo encabezado de la columna, o vacío para no mostrarla.
+     * @param titulo encabezado de la columna del algoritmo, o vacío para no mostrarla.
+     * @param conFallos true para mostrar la columna Fallos.
      */
-    public void setColumnaAlgoritmo(String titulo) {
-        int columnas = 4;
+    public void setColumnasProcesos(String titulo, boolean conFallos) {
+        List<String> columnas = new ArrayList<>();
+        columnas.add("Proceso");
+        columnas.add("CPU");
+        columnas.add("Estado");
+        columnas.add("Restante");
         if (!titulo.isEmpty()) {
-            columnas = 5;
+            columnas.add(titulo);
         }
-        boolean igual = modeloProcesos.getColumnCount() == columnas && (columnas == 4 || titulo.equals(modeloProcesos.getColumnName(4)));
+        if (conFallos) {
+            columnas.add("Fallos");
+        }
+        boolean igual = modeloProcesos.getColumnCount() == columnas.size();
+        for (int i = 0; igual && i < columnas.size(); i++) {
+            igual = columnas.get(i).equals(modeloProcesos.getColumnName(i));
+        }
         if (igual) {
             return;
         }
-        if (columnas == 4) {
-            modeloProcesos.setColumnIdentifiers(new Object[]{"Proceso", "CPU", "Estado", "Restante"});
-        } else {
-            modeloProcesos.setColumnIdentifiers(new Object[]{"Proceso", "CPU", "Estado", "Restante", titulo});
-        }
+        modeloProcesos.setColumnIdentifiers(columnas.toArray());
         configurarTablaLista(tablaProcesos);
     }
 
@@ -1353,7 +1366,8 @@ public class Aplicacion extends JFrame {
         String tipo = getTipoAsignacionSeleccionado();
         selectorCantidadParticiones.setEnabled(habilitado && "Fija iguales".equals(tipo));
         selectorTamañosParticion.setEnabled(habilitado && "Fija desiguales".equals(tipo));
-        selectorTamañoPagina.setEnabled(habilitado && "Paginación".equals(tipo));
+        selectorTamañoPagina.setEnabled(habilitado && ("Paginación".equals(tipo) || "Paginación virtual".equals(tipo)));
+        selectorMarcosProceso.setEnabled(habilitado && "Paginación virtual".equals(tipo));
     }
 
     /**
@@ -1385,13 +1399,17 @@ public class Aplicacion extends JFrame {
             if (suma != zonaUsuario) {
                 throw new IllegalArgumentException("Las particiones suman " + suma + " y deben sumar exacto la zona de usuario de " + zonaUsuario + " posiciones.");
             }
-        } else if ("Paginación".equals(tipo)) {
+        } else if ("Paginación".equals(tipo) || "Paginación virtual".equals(tipo)) {
             int tamañoPagina = getTamañoPaginaSeleccionado();
             if (tamañoPagina < 1 || tamañoPagina > zonaUsuario) {
                 throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y " + zonaUsuario + ".");
             }
             if (zonaUsuario % tamañoPagina != 0) {
                 throw new IllegalArgumentException("La zona de usuario tiene " + zonaUsuario + " posiciones y no se divide exacto en páginas de " + tamañoPagina + ".");
+            }
+            int marcos = zonaUsuario / tamañoPagina;
+            if ("Paginación virtual".equals(tipo) && (getMarcosProcesoSeleccionado() < 1 || getMarcosProcesoSeleccionado() > marcos)) {
+                throw new IllegalArgumentException("Los marcos por proceso deben estar entre 1 y " + marcos + ".");
             }
         }
     }
@@ -1560,6 +1578,20 @@ public class Aplicacion extends JFrame {
             throw new IllegalArgumentException("El tamaño de página debe ser un entero mayor o igual a 1.");
         }
         return (Integer) selectorTamañoPagina.getValue();
+    }
+
+    /**
+     * Confirma y obtiene los marcos por proceso.
+     *
+     * @return marcos de cada proceso para Paginación virtual.
+     */
+    public int getMarcosProcesoSeleccionado() {
+        try {
+            selectorMarcosProceso.commitEdit();
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException("Los marcos por proceso deben ser un entero mayor o igual a 1.");
+        }
+        return (Integer) selectorMarcosProceso.getValue();
     }
 
     /**

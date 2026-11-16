@@ -13,29 +13,20 @@
 
 ## Objetivos alcanzados y no alcanzados
 
-| Objetivo                             | Estado       | Descripción                                                                                                                                  |
-| ------------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Interfaz gráfica                     | Alcanzado    | Interfaz en Java para observar RAM, disco, BCP, procesos, consola y estadísticas.                                                            |
-| Carga de programas                   | Alcanzado    | Carga de uno o varios archivos `.asm`, validando cada archivo y conservando los aceptados.                                                   |
-| Validación de archivos               | Alcanzado    | Revisión de extensión, sintaxis, instrucciones, operandos y nombres duplicados, con mensajes de error claros.                                |
-| Ejecución en ambos modos             | Alcanzado    | Ejecución paso a paso y automática hasta finalizar o quedar esperando una entrada.                                                           |
-| Instrucciones y pesos                | Alcanzado    | Ejecución de LOAD, STORE, MOV, ADD, SUB, INC, DEC y SWAP.                                                                                    |
-| Comparaciones y saltos               | Alcanzado    | CMP, JMP, JE y JNE, con desplazamientos relativos y validación de los límites del programa.                                                  |
-| Pila por proceso                     | Alcanzado    | PARAM, PUSH y POP sobre una pila individual de cinco posiciones, con control de desbordamiento y pila vacía.                                 |
-| Procesador y registros               | Alcanzado    | Una CPU compartida con PC, IR, AC, AX, BX, CX, DX, AH, AL y flag, hasta cinco procesos sin terminar.                                         |
-| Interrupciones y llamadas al sistema | Alcanzado    | Atención de INT 09H, INT 10H, INT 20H e INT 21H para teclado, pantalla, finalización y archivos.                                             |
-| Teclado                              | Alcanzado    | Entrada de enteros de 0 a 255, confirmación con Enter y almacenamiento en DX. La espera se mide hasta una entrada válida.                    |
-| Pantalla                             | Alcanzado    | Consola para mostrar salidas, solicitudes de teclado y errores, protegiendo el historial frente a modificaciones.                            |
-| Gestión de memoria principal         | Alcanzado    | Zonas de kernel y usuario para BCP e instrucciones, asignación de espacio y liberación de RAM al terminar.                                   |
-| Espera por memoria disponible        | Alcanzado    | Los trabajos que no caben temporalmente esperan admisión, la memoria liberada se reutiliza para admitirlos.                                  |
-| Almacenamiento secundario e índice   | Alcanzado    | Programas conservados en disco simulado e índice en sus primeras posiciones con nombre, dirección y tamaño.                                  |
-| Manejo de archivos                   | Alcanzado    | Crear, abrir, leer, escribir y eliminar archivos numéricos mediante INT 21H, con nombre en DX y contenido en AL.                             |
-| BCP individual                       | Alcanzado    | Conservación de estado, registros, pila, CPU, tiempos, prioridad, base, alcance, enlace al siguiente BCP y archivos abiertos.                |
-| Visualización del BCP y registros    | Alcanzado    | Presentación del BCP del proceso actual, sus registros y la ubicación de los BCP e instrucciones en RAM.                                     |
-| Listas de trabajos y procesos        | Alcanzado    | Listas separadas para trabajos pendientes y procesos admitidos, con actualización de sus estados durante la ejecución.                       |
-| Planificación FCFS                   | Alcanzado    | Selección por orden de entrada a la cola de listos, el actual conserva la CPU hasta terminar o pedir teclado.                                |
-| Despachador y cambios de contexto    | Alcanzado    | Guardado y restauración del contexto al retirar o asignar un proceso, sin mezclar registros ni pilas.                                        |
-| Configuración del simulador          | Alcanzado    | Modal para elegir RAM y disco antes de cargar programas, con valores iniciales de 256 y 512 y tamaños enteros editables.                     |
-| Tiempos y estadísticas               | Alcanzado    | Registro y visualización del inicio, finalización y duración en segundos de cada proceso aceptado.                                           |
-| Protección y seguridad               | Alcanzado    | Validación de direcciones, capacidad, pila, entrada y archivos.                                                                              |
-| Memoria virtual                      | No alcanzado | No se implementaron paginación, intercambio ni suspensión y restauración de procesos desde disco. La reserva configurable permanece sin uso. |
+| Objetivo                                | Estado    | Descripción                                                                                                                                                            |
+| --------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base del proyecto anterior              | Alcanzado | Se conserva el gestor del proyecto 1 (carga y validación de archivos, CPU con registros y pila, BCP, RAM, disco, archivos con INT 21H) y se le agrega planificación.   |
+| Ráfaga y tiempo de llegada              | Alcanzado | La ráfaga es la cantidad de líneas del archivo y cada línea ocupa una posición de memoria. La llegada se edita en la lista de trabajos después de cargar.              |
+| Tiempo inicial cero                     | Alcanzado | El reloj simulado empieza en 0 y avanza un segundo por paso para todas las CPU.                                                                                        |
+| Configuración de la planificación       | Alcanzado | Ventana de configuración para elegir el algoritmo y sus parámetros: quantum, quantum por nivel y límite de espera de MLFQ, tasas A y B de SRR.                         |
+| Configuración de memorias               | Alcanzado | Tamaño de RAM, disco y memoria virtual, tipo de asignación y sus parámetros: particiones, tamaño de página y marcos por proceso.                                       |
+| Algoritmos de CPU                       | Alcanzado | FCFS, SRT, SPN, RR, HRRN, Selfish Round Robin, Lottery, Por Prioridad, Guaranteed Scheduling y Multilevel Feedback Queue.                                              |
+| Asignación de memoria                   | Alcanzado | Particiones fijas iguales y desiguales, asignación dinámica First, Next y Best Fit, paginación física y paginación virtual por demanda.                                |
+| Memoria virtual                         | Alcanzado | Paginación virtual con marcos fijos por proceso y reemplazo FIFO; la página que sale de RAM se guarda en la zona de memoria virtual del disco y se recupera al fallar. |
+| Hasta 5 CPU                             | Alcanzado | De 1 a 5 CPU elegidas antes de ejecutar, cada una con hasta 5 procesos y afinidad fija; un BCP por CPU con selector.                                                   |
+| Finalización y liberación               | Alcanzado | Al terminar, el proceso pasa a TERMINADO y libera su BCP, su memoria (partición, hueco o marcos) y sus páginas en la memoria virtual.                                  |
+| Ejecución automática y manual           | Alcanzado | Ejecución segundo a segundo con el Timer o paso a paso.                                                                                                                |
+| Interrupciones sin ENTER y sin teclado  | Alcanzado | Se retiró INT 09H; INT 10H, INT 20H e INT 21H se atienden sin esperar ENTER.                                                                                           |
+| Un segundo por instrucción              | Alcanzado | Cada instrucción dura un segundo; la tabla de ejecución muestra por CPU qué proceso ejecutó en cada segundo y el ocio.                                                 |
+| Estados y cambios de contexto           | Alcanzado | Listas de trabajos y procesos con sus estados (NUEVO, LISTO, EJECUTANDO, BLOQUEADO, TERMINADO) y el BCP de cada CPU con registros, pila y tabla de páginas.            |
+| Estadísticas por ejecución y acumuladas | Alcanzado | Por cada simulación: algoritmo, inicio, final, ocio, Tr y Tr/Ts por proceso; las simulaciones se acumulan en un historial hasta Limpiar.                               |
